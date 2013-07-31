@@ -1,0 +1,53 @@
+#ifndef SOCKET_H
+#define SOCKET_H
+
+
+#include <unistd.h>
+#include "Log.h"
+
+
+class CSocket: public CLogger
+{
+public:
+	CSocket(): m_Fd(-1) {}
+	virtual ~CSocket() {Close();}
+	virtual int Attach(int fd) = 0;
+	virtual void Detach() {m_Fd = -1;}
+	int GetFd() {return m_Fd;}
+	bool SetNonBlock();
+	bool SetLinger(int time);
+	void Close()
+	{
+		if(m_Fd > 0)
+		{
+			close(m_Fd);
+			m_Fd = -1;
+		}
+	}
+protected:
+	int m_Fd;
+};
+
+class CTcp: public CSocket
+{
+public:
+	int Attach(int fd = -1);
+	ssize_t Send(const void *buf, size_t len);
+	ssize_t Recv(void *buf, size_t len);
+};
+
+class CTcpServer: public CTcp
+{
+public:
+	bool Listen(int port, const string &ip="");
+	int Accept();
+};
+
+class CTcpClient: public CTcp
+{
+public:
+	bool Connect(const string &ip, int port);
+};
+
+
+#endif
