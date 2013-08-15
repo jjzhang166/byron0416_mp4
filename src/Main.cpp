@@ -4,12 +4,13 @@
 
 int main(int argc, char** argv)
 {
+	CLog::SetRootLevel(ALL_LOG_LEVEL);
+
 	const string path = "3.mp4";
 	CMp4Demuxer mp4;
 
-	CLog::SetRootLevel(ALL_LOG_LEVEL);
-
 	mp4.Parse(path);
+	mp4.Send(path);
 
 	return 0;
 }
