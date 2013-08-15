@@ -1,7 +1,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <arpa/inet.h> //htonl
 #include <errno.h>
 #include <string.h>
 #include "Mp4.h"
@@ -38,6 +37,87 @@ bool CMp4Demuxer::Parse(const string &path)
 	}
 }
 
+void CMp4Demuxer::Send(const string &path)
+{
+	int fd = open(path.c_str(), O_RDONLY|O_LARGEFILE|O_NONBLOCK, 0);
+	vector<CSample> &s = m_VideoHint;
+	for(size_t i=0; i<s.size(); i++)
+	{
+		CSample sample = s[i];
+		lseek(fd,  sample.m_Offset, SEEK_SET);
+
+		LOG_TRACE("Get rtp sample: st/" << sample.m_Timestamp << " dur/" << sample.m_Duration << " offset/" << sample.m_Offset << " len/" << sample.m_Len);
+
+		UInt16 count, reserved;
+		Read16BE(fd, count);
+		Read16BE(fd, reserved);
+		LOG_TRACE("This sample have " << count << " rtp packets.");
+		for(size_t j=0; j<count; j++)
+		{
+			CPacketEntry e;
+
+			read(fd, &e, sizeof(CPacketEntry));
+			e.m_Count = htons(e.m_Count);
+			LOG_TRACE("This packet have " << count << " entry.");
+
+			if(e.m_Flags & 0x00000004)
+			{
+				LOG_TRACE("This entry have " << count << " bytes extra data.");
+				UInt32 len;
+				Read32BE(fd, len);
+				lseek(fd, len-4, SEEK_CUR);
+			}
+
+			int type;
+			read(fd, &type, 1);
+			LOG_TRACE("This entry type " << type << ".");
+			if(type == 0)
+			{
+			}
+			else if(type == 1)
+			{
+			}
+			else if(type == 2)
+			{
+				char index;
+				UInt16 len;
+				UInt32 num;
+				UInt32 offset;
+				UInt32 skip;
+
+				read(fd, &index, 1);
+				read(fd, &len, 2);
+				read(fd, &num, 4);
+				read(fd, &offset, 4);
+				read(fd, &skip, 4);
+			}
+			else if(type == 3)
+			{
+			}
+			else
+			{
+			}
+		}
+	}
+	close(fd);
+}
+
+ssize_t CMp4Demuxer::Read16BE(int fd, UInt16 &value)
+{
+	ssize_t n = read(fd, &value, 2);
+	value = htons(value);
+
+	return n;
+}
+
+ssize_t CMp4Demuxer::Read16BE(int fd, UInt16 &value, size_t offset)
+{
+	ssize_t n = pread(fd, &value, 2, offset);
+	value = htons(value);
+
+	return n;
+}
+
 ssize_t CMp4Demuxer::Read32BE(int fd, UInt32 &value)
 {
 	ssize_t n = read(fd, &value, 4);
@@ -69,12 +149,12 @@ bool CMp4Demuxer::ParseAtom(int fd, Atom atom)
 			}
 		case MKTYPE('t', 'r', 'a', 'k'):
 			{
-				ret = ParseDefault(fd, atom);
+				ret = ParseTrak(fd, atom);
 				break;
 			}
 		case MKTYPE('t', 'k', 'h', 'd'):
 			{
-				ret = true;
+				ret = ParseTkhd(fd, atom);
 				break;
 			}
 		case MKTYPE('m', 'd', 'i', 'a'):
@@ -169,7 +249,12 @@ bool CMp4Demuxer::ParseAtom(int fd, Atom atom)
 			}
 		case MKTYPE('t', 'r', 'e', 'f'):
 			{
-				ret = ParseTref(fd, atom);
+				ret = ParseDefault(fd, atom);
+				break;
+			}
+		case MKTYPE('h', 'i', 'n', 't'):
+			{
+				ret = ParseHint(fd, atom);
 				break;
 			}
 		case MKTYPE('u', 'd', 't', 'a'):
@@ -280,17 +365,121 @@ bool CMp4Demuxer::ParseFtyp(int fd, Atom atom)
 		return false;
 }
 
+bool CMp4Demuxer::ParseTrak(int fd, Atom a)
+{
+	m_TrackType = 0;
+	m_TrackID = 0;
+	m_ReferID = 0;
+	m_SampleDur.clear();
+	m_SampleSize.clear();
+	m_ChunkCapacity.clear();
+	m_ChunkOffset.clear();
+
+	bool ret = ParseDefault(fd, a);
+
+	vector<CSample> *m_Samples; 
+	if(m_TrackType == MKTYPE('v', 'i', 'd', 'e'))
+	{
+		m_Samples = &m_VideoSamples;
+	}
+	else if(m_TrackType == MKTYPE('s', 'o', 'u', 'n'))
+	{
+		m_Samples = &m_AudioSamples;
+	}
+	else if(m_TrackType == MKTYPE('h', 'i', 'n', 't'))
+	{
+		if(m_TrackID == 3)
+			m_Samples = &m_VideoHint;
+		if(m_TrackID == 4)
+			m_Samples = &m_AudioHint;
+	}
+	else
+		return true;
+
+	size_t ts = 0;
+	size_t cidx = 0;
+	size_t coffset = m_ChunkOffset[cidx];
+	size_t ccapacity = m_ChunkCapacity[cidx];
+	size_t offset = 0;
+
+	for(size_t i=0; i<m_SampleDur.size(); i++)
+	{
+		CSample sample;
+
+		sample.m_Timestamp = ts;
+		sample.m_Duration = m_SampleDur[i];
+
+		sample.m_Offset = coffset + offset;
+		sample.m_Len = m_SampleSize[i];
+		offset += sample.m_Len;
+
+		ccapacity--;
+		if(ccapacity == 0)
+		{
+			cidx++;
+			coffset = m_ChunkOffset[cidx];
+			if(cidx < m_ChunkCapacity.size())
+				ccapacity = m_ChunkCapacity[cidx];
+			else
+				ccapacity = m_ChunkCapacity[m_ChunkCapacity.size()-1];
+			offset = 0;
+		}
+
+		ts += m_SampleDur[i];
+
+		m_Samples->push_back(sample);
+		LOG_TRACE("Find sample " << i << ": st/" << sample.m_Timestamp << " dur/" << sample.m_Duration << hex << " offset/" << sample.m_Offset << dec << " len/" << sample.m_Len);
+	}
+
+	return ret;
+}
+
+bool CMp4Demuxer::ParseTkhd(int fd, Atom atom)
+{
+	UInt32 version;
+
+	Read32BE(fd, version);
+	version = version >> 24;
+
+	if(version == 0)
+	{
+		UInt32 create;
+		UInt32 modify;
+
+		Read32BE(fd, create);
+		Read32BE(fd, modify);
+	}
+	else if(version == 1)
+	{
+		UInt64 create;
+		UInt64 modify;
+
+		read(fd, &create, 8);
+		read(fd, &modify, 8);
+	}
+	else
+	{
+		assert(false);
+
+		return false;
+	}
+
+	Read32BE(fd, m_TrackID);
+	LOG_TRACE("Get track id " << m_TrackID << ".");
+
+	return true;
+}
+
 bool CMp4Demuxer::ParseHdlr(int fd, Atom atom)
 {
 	UInt32 version;
 	UInt32 preDefined;
-	UInt32 handle;
 
 	read(fd, &version, 4);
 	read(fd, &preDefined, 4);
-	read(fd, &handle, 4);
+	read(fd, &m_TrackType, 4);
 
-	LOG_DEBUG("Track for " << PRTYPE(handle));
+	LOG_DEBUG("Track for " << PRTYPE(m_TrackType));
 
 	return true;
 }
@@ -326,14 +515,18 @@ bool CMp4Demuxer::ParseStts(int fd, Atom a)
 
 	for(UInt32 i=0; i<count; i++)
 	{
-		UInt32 samples;
+		UInt32 count;
 		UInt32 delta;
 
-		read(fd, &samples, 4);
-		samples = htonl(samples);
-		read(fd, &delta, 4);
-		delta = htonl(delta);
-		LOG_TRACE("\tSTTS: sample count " << samples << ", delta " << delta << ".");
+		Read32BE(fd, count);
+		Read32BE(fd, delta);
+		LOG_TRACE("\tSTTS: sample count " << count << ", delta " << delta << ".");
+
+		/** Save information */
+		for(size_t j=0; j<count; j++)
+		{
+			m_SampleDur.push_back(delta);
+		}
 	}
 
 	return true;
@@ -351,9 +544,12 @@ bool CMp4Demuxer::ParseStsz(int fd, Atom a)
 	read(fd, &count, 4);
 	count = htonl(count);
 
+	LOG_TRACE("\tSTSZ: sample count " << count << ", sample size " << size << ".");
+
 	if(size != 0)
 	{
-		LOG_TRACE("\tSTSZ: sample count " << count << ", sample size " << size << ".");
+		for(size_t i=0; i<count; i++)
+			m_SampleSize.push_back(size);
 	}
 	else
 	{
@@ -361,7 +557,9 @@ bool CMp4Demuxer::ParseStsz(int fd, Atom a)
 		{
 			read(fd, &size, 4);
 			size = htonl(size);
-			LOG_TRACE("\tSTSZ: sample count 1, sample size " << size << ".");
+			LOG_TRACE("\tSTSZ: sample " << i << " size " << size << ".");
+
+			m_SampleSize.push_back(size);
 		}
 	}
 
@@ -386,6 +584,8 @@ bool CMp4Demuxer::ParseStsc(int fd, Atom a)
 		Read32BE(fd, samplesPerChunk);
 		Read32BE(fd, sampleDescriptionIndex);
 		LOG_TRACE("\tSTSC: first " << firstChunk << ". per " << samplesPerChunk << ", index " << sampleDescriptionIndex << ".");
+
+		m_ChunkCapacity.push_back(samplesPerChunk);
 	}
 
 	return true;
@@ -404,7 +604,9 @@ bool CMp4Demuxer::ParseStco(int fd, Atom a)
 		UInt32 offset;
 
 		Read32BE(fd, offset);
-		LOG_TRACE("\tSTCO: chunk " << i+1 << " with offset " << offset << ".");
+		LOG_TRACE("\tSTCO: chunk " << i+1 << " with offset " << hex << offset << ".");
+
+		m_ChunkOffset.push_back(offset);
 	}
 
 	return true;
@@ -439,8 +641,11 @@ bool CMp4Demuxer::ParseHmhd(int fd, Atom a)
 	return true;
 }
 
-bool CMp4Demuxer::ParseTref(int fd, Atom a)
+bool CMp4Demuxer::ParseHint(int fd, Atom a)
 {
+	Read32BE(fd, m_ReferID);
+	LOG_TRACE("Find a hint track for track " << m_ReferID << ".");
+
 	return true;
 }
 
