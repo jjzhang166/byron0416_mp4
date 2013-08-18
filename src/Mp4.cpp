@@ -1,4 +1,5 @@
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -6,8 +7,29 @@
 #include "Mp4.h"
 
 
+size_t GetCurrent()
+{
+	struct timeval tv;
+	struct timezone tz;
+
+	if(gettimeofday(&tv, &tz) == 0)
+	{
+		return (size_t)tv.tv_sec*1000 + tv.tv_usec/1000;
+	}
+	else
+	{
+		assert(false);
+		return 0;
+	}
+}
+
+
+/** CMp4Demuxer */
+
 CMp4Demuxer::CMp4Demuxer()
 {
+	m_Udp.Attach();
+	m_Udp.Connect("192.168.0.101", 1234);
 }
 
 bool CMp4Demuxer::Parse(const string &path)
@@ -39,11 +61,15 @@ bool CMp4Demuxer::Parse(const string &path)
 
 void CMp4Demuxer::Send(const string &path)
 {
+	size_t start = GetCurrent();
 	int fd = open(path.c_str(), O_RDONLY|O_LARGEFILE|O_NONBLOCK, 0);
-	vector<CSample> &s = m_VideoHint;
+	vector<CSample> &s = m_AudioHint;
 	for(size_t i=0; i<s.size(); i++)
 	{
 		CSample sample = s[i];
+		UInt32 ts = ntohl(sample.m_Timestamp);
+		//UInt32 ts = ntohl(sample.m_Timestamp * 1000 / 22050);
+		//UInt32 ts = ntohl(sample.m_Timestamp * 1000 / 90000);
 		lseek(fd,  sample.m_Offset, SEEK_SET);
 
 		LOG_TRACE("Get rtp sample: st/" << sample.m_Timestamp << " dur/" << sample.m_Duration << " offset/" << sample.m_Offset << " len/" << sample.m_Len);
@@ -55,48 +81,98 @@ void CMp4Demuxer::Send(const string &path)
 		for(size_t j=0; j<count; j++)
 		{
 			CPacketEntry e;
+			char data[2500] = {0};
+			size_t offset = 0;
 
 			read(fd, &e, sizeof(CPacketEntry));
-			e.m_Count = htons(e.m_Count);
-			LOG_TRACE("This packet have " << count << " entry.");
+			e.m_Count = ntohs(e.m_Count);
+			LOG_TRACE("This packet have " << e.m_Count << " entry.");
 
 			if(e.m_Flags & 0x00000004)
 			{
-				LOG_TRACE("This entry have " << count << " bytes extra data.");
+				LOG_TRACE("This packet have " << count << " bytes extra data.");
 				UInt32 len;
 				Read32BE(fd, len);
 				lseek(fd, len-4, SEEK_CUR);
 			}
 
-			int type;
-			read(fd, &type, 1);
-			LOG_TRACE("This entry type " << type << ".");
-			if(type == 0)
-			{
-			}
-			else if(type == 1)
-			{
-			}
-			else if(type == 2)
-			{
-				char index;
-				UInt16 len;
-				UInt32 num;
-				UInt32 offset;
-				UInt32 skip;
+			//rtp header
+			memcpy(data+offset, &e.m_HeaderInfo, 4);
+			offset += 4;
 
-				read(fd, &index, 1);
-				read(fd, &len, 2);
-				read(fd, &num, 4);
-				read(fd, &offset, 4);
-				read(fd, &skip, 4);
-			}
-			else if(type == 3)
+			//Make rtp header when get first entry.
+			memcpy(data+offset, &ts, 4);
+			offset += 4;
+			UInt32 ssrc = 0x2653312d;
+			memcpy(data+offset, &ssrc, 4);
+			offset += 4;
+
+			for(size_t n=0; n<e.m_Count; n++)
 			{
+				int type = 0;
+
+				read(fd, &type, 1);
+				LOG_TRACE("This entry type " << type << ".");
+
+				if(type == 0)
+				{
+					assert(false);
+				}
+				else if(type == 1)
+				{
+					char pad[15];
+					char cn;
+
+					read(fd, &cn, 1);
+					read(fd, data+offset, cn);
+					read(fd, pad, 14-cn);
+				}
+				else if(type == 2)
+				{
+					int index = 0;
+					UInt16 len;
+					UInt32 num;
+					UInt32 off;
+					UInt32 skip;
+
+					read(fd, &index, 1);
+					Read16BE(fd, len);
+					Read32BE(fd, num);
+					num --;
+					Read32BE(fd, off);
+					read(fd, &skip, 4);
+
+					LOG_TRACE("attach1 data form " << num << "/" << index << " sample " << off << "/" << len << ".");
+					if(index == 0)
+						off += m_AudioSamples[num].m_Offset;
+					else
+						off += m_AudioHint[num].m_Offset;
+					LOG_TRACE("attach2 data form " << num << " sample " << off << "/" << len << ".");
+					pread(fd, data+offset, len, off);
+					offset += len;
+				}
+				else if(type == 3)
+				{
+					assert(false);
+				}
+				else
+				{
+					assert(false);
+				}
 			}
-			else
+
+			size_t t = GetCurrent();
+			t -= start;
+			UInt32 ts1 = sample.m_Timestamp * 1000 / 22050;
+			if(ts1 > 100)
+				ts1 -= 100;
+			if(t < ts1)
 			{
+				LOG_TRACE("Will send " << offset << " bytes by ts " << ts1 << "/" << t << " after sleep " << ts1-t << " ms.");
+				usleep((ts1-t)*1000);
 			}
+			m_Udp.Send(data, offset);
+			LOG_TRACE("Send " << offset << " bytes by ts " << ts1 << ".");
 		}
 	}
 	close(fd);
@@ -105,7 +181,7 @@ void CMp4Demuxer::Send(const string &path)
 ssize_t CMp4Demuxer::Read16BE(int fd, UInt16 &value)
 {
 	ssize_t n = read(fd, &value, 2);
-	value = htons(value);
+	value = ntohs(value);
 
 	return n;
 }
@@ -113,7 +189,7 @@ ssize_t CMp4Demuxer::Read16BE(int fd, UInt16 &value)
 ssize_t CMp4Demuxer::Read16BE(int fd, UInt16 &value, size_t offset)
 {
 	ssize_t n = pread(fd, &value, 2, offset);
-	value = htons(value);
+	value = ntohs(value);
 
 	return n;
 }
@@ -121,7 +197,7 @@ ssize_t CMp4Demuxer::Read16BE(int fd, UInt16 &value, size_t offset)
 ssize_t CMp4Demuxer::Read32BE(int fd, UInt32 &value)
 {
 	ssize_t n = read(fd, &value, 4);
-	value = htonl(value);
+	value = ntohl(value);
 
 	return n;
 }
@@ -164,7 +240,7 @@ bool CMp4Demuxer::ParseAtom(int fd, Atom atom)
 			}
 		case MKTYPE('m', 'd', 'h', 'd'):
 			{
-				ret = true;
+				ret = ParseMdhd(fd, atom);
 				break;
 			}
 		case MKTYPE('h', 'd', 'l', 'r'):
@@ -308,7 +384,7 @@ bool CMp4Demuxer::ParseDefault(int fd, Atom atom)
 		ssize_t ret = read(fd, &a.size, 4);
 		if(ret == 4)
 		{
-			a.size = htonl(a.size);
+			a.size = ntohl(a.size);
 			read(fd, &a.type, sizeof(a.type));
 			a.size -= 8;
 			readed += 8;
@@ -388,9 +464,9 @@ bool CMp4Demuxer::ParseTrak(int fd, Atom a)
 	}
 	else if(m_TrackType == MKTYPE('h', 'i', 'n', 't'))
 	{
-		if(m_TrackID == 3)
+		if(m_TrackID == 65537)
 			m_Samples = &m_VideoHint;
-		if(m_TrackID == 4)
+		if(m_TrackID == 65536)
 			m_Samples = &m_AudioHint;
 	}
 	else
@@ -428,7 +504,8 @@ bool CMp4Demuxer::ParseTrak(int fd, Atom a)
 		ts += m_SampleDur[i];
 
 		m_Samples->push_back(sample);
-		LOG_TRACE("Find sample " << i << ": st/" << sample.m_Timestamp << " dur/" << sample.m_Duration << hex << " offset/" << sample.m_Offset << dec << " len/" << sample.m_Len);
+		//LOG_TRACE("Find sample " << i << ": st/" << sample.m_Timestamp << " dur/" << sample.m_Duration << hex << " offset/" << sample.m_Offset << dec << " len/" << sample.m_Len);
+		LOG_TRACE("Find sample " << i << ": st/" << sample.m_Timestamp << " dur/" << sample.m_Duration << " offset/" << sample.m_Offset << dec << " len/" << sample.m_Len);
 	}
 
 	return ret;
@@ -466,6 +543,36 @@ bool CMp4Demuxer::ParseTkhd(int fd, Atom atom)
 
 	Read32BE(fd, m_TrackID);
 	LOG_TRACE("Get track id " << m_TrackID << ".");
+
+	return true;
+}
+
+bool CMp4Demuxer::ParseMdhd(int fd, Atom atom)
+{
+	UInt32 version;
+	UInt32 timescale;
+
+	Read32BE(fd, version);
+	version = version >> 24;
+	if(version == 1)
+	{
+		UInt64 create;
+		UInt64 modify;
+
+		read(fd, &create, 8);
+		read(fd, &modify, 8);
+	}
+	else
+	{
+		UInt32 create;
+		UInt32 modify;
+
+		read(fd, &create, 4);
+		read(fd, &modify, 4);
+	}
+
+	Read32BE(fd, timescale);
+	LOG_TRACE("Get timescale " << timescale << ".");
 
 	return true;
 }
@@ -511,7 +618,8 @@ bool CMp4Demuxer::ParseStts(int fd, Atom a)
 
 	read(fd, &full, 4);
 	read(fd, &count, 4);
-	count = htonl(count);
+	count = ntohl(count);
+	LOG_TRACE("\tSTTS: Get " << count << " samples.");
 
 	for(UInt32 i=0; i<count; i++)
 	{
@@ -520,7 +628,7 @@ bool CMp4Demuxer::ParseStts(int fd, Atom a)
 
 		Read32BE(fd, count);
 		Read32BE(fd, delta);
-		LOG_TRACE("\tSTTS: sample count " << count << ", delta " << delta << ".");
+		//LOG_TRACE("\tSTTS: sample count " << count << ", delta " << delta << ".");
 
 		/** Save information */
 		for(size_t j=0; j<count; j++)
@@ -540,9 +648,9 @@ bool CMp4Demuxer::ParseStsz(int fd, Atom a)
 
 	read(fd, &full, 4);
 	read(fd, &size, 4);
-	size = htonl(size);
+	size = ntohl(size);
 	read(fd, &count, 4);
-	count = htonl(count);
+	count = ntohl(count);
 
 	LOG_TRACE("\tSTSZ: sample count " << count << ", sample size " << size << ".");
 
@@ -556,8 +664,8 @@ bool CMp4Demuxer::ParseStsz(int fd, Atom a)
 		for(UInt32 i=0; i<count; i++)
 		{
 			read(fd, &size, 4);
-			size = htonl(size);
-			LOG_TRACE("\tSTSZ: sample " << i << " size " << size << ".");
+			size = ntohl(size);
+			//LOG_TRACE("\tSTSZ: sample " << i << " size " << size << ".");
 
 			m_SampleSize.push_back(size);
 		}
@@ -583,7 +691,7 @@ bool CMp4Demuxer::ParseStsc(int fd, Atom a)
 		Read32BE(fd, firstChunk);
 		Read32BE(fd, samplesPerChunk);
 		Read32BE(fd, sampleDescriptionIndex);
-		LOG_TRACE("\tSTSC: first " << firstChunk << ". per " << samplesPerChunk << ", index " << sampleDescriptionIndex << ".");
+		//LOG_TRACE("\tSTSC: first " << firstChunk << ". per " << samplesPerChunk << ", index " << sampleDescriptionIndex << ".");
 
 		m_ChunkCapacity.push_back(samplesPerChunk);
 	}
@@ -598,13 +706,14 @@ bool CMp4Demuxer::ParseStco(int fd, Atom a)
 
 	read(fd, &full, 4);
 	Read32BE(fd, count);
+	LOG_TRACE("\tSTCO: Get " << count << " chunks.");
 
 	for(UInt32 i=0; i<count; i++)
 	{
 		UInt32 offset;
 
 		Read32BE(fd, offset);
-		LOG_TRACE("\tSTCO: chunk " << i+1 << " with offset " << hex << offset << ".");
+		//LOG_TRACE("\tSTCO: chunk " << i+1 << " with offset " << hex << offset << ".");
 
 		m_ChunkOffset.push_back(offset);
 	}

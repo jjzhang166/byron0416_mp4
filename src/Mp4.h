@@ -6,6 +6,7 @@
 #include <string>
 #include <arpa/inet.h> //htonl
 #include "Log.h"
+#include "Socket.h"
 
 
 using namespace std;
@@ -20,8 +21,7 @@ typedef size_t       UInt64;
 struct CPacketEntry
 {
 	UInt32 m_RelativeTime;
-	UInt16 m_HeaderInfo;
-	UInt16 m_seq;
+	UInt32 m_HeaderInfo;
 	UInt16 m_Flags;
 	UInt16 m_Count;
 };
@@ -57,6 +57,7 @@ private:
 	bool ParseFtyp(int fd, Atom a);
 	bool ParseTrak(int fd, Atom a);
 	bool ParseTkhd(int fd, Atom a);
+	bool ParseMdhd(int fd, Atom a);
 	bool ParseHdlr(int fd, Atom a);
 	bool ParseVmhd(int fd, Atom a);
 	bool ParseSmhd(int fd, Atom a);
@@ -85,6 +86,7 @@ public:
 	vector<CSample> m_AudioSamples;
 	vector<CSample> m_VideoHint;
 	vector<CSample> m_AudioHint;
+	CUdp m_Udp;
 };
 
 
