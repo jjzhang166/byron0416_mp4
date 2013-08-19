@@ -74,7 +74,8 @@ void CMp4Demuxer::Send(const string &path)
 
 		LOG_TRACE("Get rtp sample: st/" << sample.m_Timestamp << " dur/" << sample.m_Duration << " offset/" << sample.m_Offset << " len/" << sample.m_Len);
 
-		UInt16 count, reserved;
+		UInt16 count=0;
+		UInt16 reserved = 0;
 		Read16BE(fd, count);
 		Read16BE(fd, reserved);
 		LOG_TRACE("This sample have " << count << " rtp packets.");
@@ -88,6 +89,9 @@ void CMp4Demuxer::Send(const string &path)
 			e.m_Count = ntohs(e.m_Count);
 			LOG_TRACE("This packet have " << e.m_Count << " entry.");
 
+			assert(e.m_HeaderInfo[0] == 0x80);
+			assert(e.m_HeaderInfo[1] == 0xe0);
+			assert(e.m_Flags == 0);
 			if(e.m_Flags & 0x00000004)
 			{
 				LOG_TRACE("This packet have " << count << " bytes extra data.");
@@ -109,10 +113,10 @@ void CMp4Demuxer::Send(const string &path)
 
 			for(size_t n=0; n<e.m_Count; n++)
 			{
-				int type = 0;
+				char type = 0;
 
 				read(fd, &type, 1);
-				LOG_TRACE("This entry type " << type << ".");
+				LOG_TRACE("This entry type " << int(type) << ".");
 
 				if(type == 0)
 				{
@@ -126,10 +130,12 @@ void CMp4Demuxer::Send(const string &path)
 					read(fd, &cn, 1);
 					read(fd, data+offset, cn);
 					read(fd, pad, 14-cn);
+					offset += cn;
+					LOG_TRACE("This entry include " << int(cn) << " bytes.");
 				}
 				else if(type == 2)
 				{
-					int index = 0;
+					char index = 0;
 					UInt16 len;
 					UInt32 num;
 					UInt32 off;
@@ -142,13 +148,17 @@ void CMp4Demuxer::Send(const string &path)
 					Read32BE(fd, off);
 					read(fd, &skip, 4);
 
-					LOG_TRACE("attach1 data form " << num << "/" << index << " sample " << off << "/" << len << ".");
+					LOG_TRACE("attach1 data form " << num << "/" << int(index) << " sample " << off << "/" << len << ".");
 					if(index == 0)
 						off += m_AudioSamples[num].m_Offset;
 					else
 						off += m_AudioHint[num].m_Offset;
 					LOG_TRACE("attach2 data form " << num << " sample " << off << "/" << len << ".");
+					size_t cur = lseek(fd, 0, SEEK_CUR);
 					pread(fd, data+offset, len, off);
+					cur -= lseek(fd, 0, SEEK_CUR);
+					if(cur != 0)
+						assert(false);
 					offset += len;
 				}
 				else if(type == 3)
@@ -171,8 +181,10 @@ void CMp4Demuxer::Send(const string &path)
 				LOG_TRACE("Will send " << offset << " bytes by ts " << ts1 << "/" << t << " after sleep " << ts1-t << " ms.");
 				usleep((ts1-t)*1000);
 			}
-			m_Udp.Send(data, offset);
+			int a = m_Udp.Send(data, offset);
 			LOG_TRACE("Send " << offset << " bytes by ts " << ts1 << ".");
+			if(a < 0)
+				LOG_ERROR("Failed to send data.");
 		}
 	}
 	close(fd);

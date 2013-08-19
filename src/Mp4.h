@@ -18,13 +18,15 @@ typedef size_t       UInt64;
 #define PRTYPE(type) ((char*)&type)[0] << ((char*)&type)[1] << ((char*)&type)[2] << ((char*)&type)[3]
 #define MKTYPE(a, b, c, d) ((a) | (b<<8) | (c<<16) | (d<<24))
 
+#pragma pack(1)
 struct CPacketEntry
 {
 	UInt32 m_RelativeTime;
-	UInt32 m_HeaderInfo;
+	unsigned char  m_HeaderInfo[4];
 	UInt16 m_Flags;
 	UInt16 m_Count;
 };
+#pragma pack()
 
 struct Atom
 {
