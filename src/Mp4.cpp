@@ -29,7 +29,7 @@ size_t GetCurrent()
 CMp4Demuxer::CMp4Demuxer()
 {
 	m_Udp.Attach();
-	m_Udp.Connect("192.168.0.101", 1234);
+	m_Udp.Connect("192.168.0.102", 1234);
 }
 
 bool CMp4Demuxer::Parse(const string &path)
@@ -89,8 +89,9 @@ void CMp4Demuxer::Send(const string &path)
 			e.m_Count = ntohs(e.m_Count);
 			LOG_TRACE("This packet have " << e.m_Count << " entry.");
 
-			assert(e.m_HeaderInfo[0] == 0x80);
-			assert(e.m_HeaderInfo[1] == 0xe0);
+			e.m_HeaderInfo[0] = 0x80;
+			//assert(e.m_HeaderInfo[0] == 0x00);
+			assert(e.m_HeaderInfo[1] == 0xe1);
 			assert(e.m_Flags == 0);
 			if(e.m_Flags & 0x00000004)
 			{
@@ -173,7 +174,7 @@ void CMp4Demuxer::Send(const string &path)
 
 			size_t t = GetCurrent();
 			t -= start;
-			UInt32 ts1 = sample.m_Timestamp * 1000 / 22050;
+			UInt32 ts1 = sample.m_Timestamp * 1000 / 8000;
 			if(ts1 > 100)
 				ts1 -= 100;
 			if(t < ts1)
@@ -476,9 +477,9 @@ bool CMp4Demuxer::ParseTrak(int fd, Atom a)
 	}
 	else if(m_TrackType == MKTYPE('h', 'i', 'n', 't'))
 	{
-		if(m_TrackID == 65537)
+		if(m_TrackID == 3)
 			m_Samples = &m_VideoHint;
-		if(m_TrackID == 65536)
+		if(m_TrackID == 4)
 			m_Samples = &m_AudioHint;
 	}
 	else
@@ -516,7 +517,7 @@ bool CMp4Demuxer::ParseTrak(int fd, Atom a)
 		ts += m_SampleDur[i];
 
 		m_Samples->push_back(sample);
-		//LOG_TRACE("Find sample " << i << ": st/" << sample.m_Timestamp << " dur/" << sample.m_Duration << hex << " offset/" << sample.m_Offset << dec << " len/" << sample.m_Len);
+		//LOG_TRACE("Find sample " << i << ": st/" << sample.m_Timestamp << " dur/" << sample.m_Duration << " offset/" << sample.m_Offset << dec << " len/" << sample.m_Len);
 		LOG_TRACE("Find sample " << i << ": st/" << sample.m_Timestamp << " dur/" << sample.m_Duration << " offset/" << sample.m_Offset << dec << " len/" << sample.m_Len);
 	}
 
@@ -703,9 +704,21 @@ bool CMp4Demuxer::ParseStsc(int fd, Atom a)
 		Read32BE(fd, firstChunk);
 		Read32BE(fd, samplesPerChunk);
 		Read32BE(fd, sampleDescriptionIndex);
-		//LOG_TRACE("\tSTSC: first " << firstChunk << ". per " << samplesPerChunk << ", index " << sampleDescriptionIndex << ".");
+		LOG_TRACE("\tSTSC: first " << firstChunk << ". per " << samplesPerChunk << ", index " << sampleDescriptionIndex << ".");
 
-		m_ChunkCapacity.push_back(samplesPerChunk);
+		{
+			if(m_ChunkCapacity.empty() == true)
+				m_ChunkCapacity.push_back(samplesPerChunk);
+			else
+			{
+				size_t num = m_ChunkCapacity[m_ChunkCapacity.size()-1];
+
+				while(m_ChunkCapacity.size() < firstChunk-1)
+					m_ChunkCapacity.push_back(num);
+
+				m_ChunkCapacity.push_back(samplesPerChunk);
+			}
+		}
 	}
 
 	return true;
@@ -725,7 +738,7 @@ bool CMp4Demuxer::ParseStco(int fd, Atom a)
 		UInt32 offset;
 
 		Read32BE(fd, offset);
-		//LOG_TRACE("\tSTCO: chunk " << i+1 << " with offset " << hex << offset << ".");
+		LOG_TRACE("\tSTCO: chunk " << i+1 << " with offset " << offset << ".");
 
 		m_ChunkOffset.push_back(offset);
 	}
