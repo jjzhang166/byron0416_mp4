@@ -63,7 +63,7 @@ void CMp4Demuxer::Send(const string &path)
 {
 	size_t start = GetCurrent();
 	int fd = open(path.c_str(), O_RDONLY|O_LARGEFILE|O_NONBLOCK, 0);
-	vector<CSample> &s = m_AudioHint;
+	vector<CSample> &s = m_VideoHint;
 	for(size_t i=0; i<s.size(); i++)
 	{
 		CSample sample = s[i];
@@ -91,7 +91,7 @@ void CMp4Demuxer::Send(const string &path)
 
 			e.m_HeaderInfo[0] = 0x80;
 			//assert(e.m_HeaderInfo[0] == 0x00);
-			assert(e.m_HeaderInfo[1] == 0xe1);
+			//assert(e.m_HeaderInfo[1] == 0xe1);
 			assert(e.m_Flags == 0);
 			if(e.m_Flags & 0x00000004)
 			{
@@ -151,9 +151,9 @@ void CMp4Demuxer::Send(const string &path)
 
 					LOG_TRACE("attach1 data form " << num << "/" << int(index) << " sample " << off << "/" << len << ".");
 					if(index == 0)
-						off += m_AudioSamples[num].m_Offset;
+						off += m_VideoSamples[num].m_Offset;
 					else
-						off += m_AudioHint[num].m_Offset;
+						off += m_VideoHint[num].m_Offset;
 					LOG_TRACE("attach2 data form " << num << " sample " << off << "/" << len << ".");
 					size_t cur = lseek(fd, 0, SEEK_CUR);
 					pread(fd, data+offset, len, off);
@@ -174,7 +174,8 @@ void CMp4Demuxer::Send(const string &path)
 
 			size_t t = GetCurrent();
 			t -= start;
-			UInt32 ts1 = sample.m_Timestamp * 1000 / 8000;
+			//UInt32 ts1 = sample.m_Timestamp * 1000 / 8000;
+			UInt32 ts1 = sample.m_Timestamp * 1000 / 90000;
 			if(ts1 > 100)
 				ts1 -= 100;
 			if(t < ts1)
