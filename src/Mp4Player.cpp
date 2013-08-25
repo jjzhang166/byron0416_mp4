@@ -30,7 +30,7 @@ bool CMp4Player::Play(int fd)
 			CRtpSample sample;
 
 			if(true == m_Mp4.GetRtpSample(ids[i], sample))
-				m_Samples.insert(pair<size_t, CRtpSample>(ids[i], sample));
+				m_Samples.insert(std::pair<size_t, CRtpSample>(ids[i], sample));
 		}
 	}
 
