@@ -19,7 +19,7 @@ private:
 	void OnTimer();
 private:
 	CMp4Demuxer m_Mp4;
-	CTcp m_Tcp;
+	CUdp m_Udp;
 	size_t m_StartTime;
 	map<size_t, CRtpSample> m_Samples;
 };

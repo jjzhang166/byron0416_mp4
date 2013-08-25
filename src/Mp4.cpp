@@ -20,6 +20,14 @@ struct CPacketEntry
 #pragma pack()
 
 
+/** CTrack */
+
+CTrack::CTrack():
+	m_SampleReaded(0)
+{
+}
+
+
 /** CMp4Demuxer */
 
 CMp4Demuxer::CMp4Demuxer():
@@ -78,116 +86,124 @@ bool CMp4Demuxer::GetRtpSample(size_t id, CRtpSample &rtp)
 	if(iter != m_Tracks.end())
 	{
 		CTrack &trk = iter->second;
-		CSample &sample = trk.m_Samples[trk.m_SampleReaded];
 
-		rtp.m_Timestamp = sample.m_Timestamp;
-		lseek(m_Fd, sample.m_Offset, SEEK_SET);
-		LOG_TRACE("Get rtp sample: st/" << sample.m_Timestamp << " dur/" << sample.m_Duration << " offset/" << sample.m_Offset << " len/" << sample.m_Len);
-
-		UInt16 count=0;
-		UInt16 reserved = 0;
-		Read16BE(count);
-		Read16BE(reserved);
-		LOG_TRACE("This sample have " << count << " rtp packets.");
-
-		for(size_t i=0; i<count; i++)
+		if(trk.m_SampleReaded < trk.m_Samples.size())
 		{
-			CRtpPacket packet;
-			char *data = packet.m_Packet;
-			CPacketEntry entry;
-			size_t offset = 0;
+			CSample &sample = trk.m_Samples[trk.m_SampleReaded];
 
-			read(m_Fd, &entry, sizeof(CPacketEntry));
-			entry.m_Count = ntohs(entry.m_Count);
-			LOG_TRACE("This packet have " << entry.m_Count << " entries.");
+			rtp.m_Timestamp = sample.m_Timestamp * 1000 / trk.m_Timescale;
+			lseek(m_Fd, sample.m_Offset, SEEK_SET);
+			LOG_TRACE("Get rtp sample from track " << id << ": st/" << sample.m_Timestamp << " dur/" << sample.m_Duration << " offset/" << sample.m_Offset << " len/" << sample.m_Len << ".");
 
-			if(entry.m_Header[0] != 0x80)
+			UInt16 count=0;
+			UInt16 reserved = 0;
+			Read16BE(count);
+			Read16BE(reserved);
+			LOG_TRACE(" This sample have " << count << " rtp packets.");
+
+			for(size_t i=0; i<count; i++)
 			{
-				LOG_INFO("Get a unknown version rtp packet with " << std::hex << entry.m_Header[0]);
-				entry.m_Header[0] = 0x80;
-			}
+				CRtpPacket packet;
+				char *data = packet.m_Packet;
+				CPacketEntry entry;
+				size_t offset = 0;
 
-			assert(entry.m_Flags == 0);
-			if(entry.m_Flags & 0x00000004)
-			{
-				UInt32 len;
-				Read32BE(len);
-				lseek(m_Fd, len-4, SEEK_CUR); // Skip extra data.
-				LOG_TRACE("This packet have " << len << " bytes extra data.");
-			}
+				read(m_Fd, &entry, sizeof(CPacketEntry));
+				entry.m_Count = ntohs(entry.m_Count);
+				LOG_TRACE("  This packet have " << entry.m_Count << " entries.");
 
-			// Copy rtp header
-			memcpy(data+offset, &entry.m_Header, 4);
-			offset += 4;
-			// Copy rtp timestamp.
-			UInt32 ts = htonl(rtp.m_Timestamp);
-			memcpy(data+offset, &ts, 4);
-			offset += 4;
-			// Copy rtp SSRC.
-			memcpy(data+offset, &trk.m_SSRC, 4);
-			offset += 4;
-
-			for(size_t n=0; n<entry.m_Count; n++)
-			{
-				char type = 0;
-
-				read(m_Fd, &type, 1);
-				LOG_TRACE("The type of this entry is " << int(type) << ".");
-
-				if(type == 0)
+				if(entry.m_Header[0] != 0x80)
 				{
-					assert(false);
+					//LOG_WARN("Get a unknown version rtp packet with " << std::hex << int(entry.m_Header[0]));
+					entry.m_Header[0] = 0x80;
 				}
-				else if(type == 1)
-				{
-					char pad[14];
-					char cn;
 
-					read(m_Fd, &cn, 1);
-					read(m_Fd, data+offset, cn);
-					offset += cn;
-					read(m_Fd, pad, 14-cn);
-					LOG_TRACE("Copy " << int(cn) << " bytes.");
+				assert(entry.m_Flags == 0);
+				if(entry.m_Flags & 0x00000004)
+				{
+					UInt32 len;
+					Read32BE(len);
+					lseek(m_Fd, len-4, SEEK_CUR); // Skip extra data.
+					LOG_DEBUG("This packet have " << len << " bytes extra data.");
 				}
-				else if(type == 2)
-				{
-					char index = 0;
-					UInt16 len;
-					UInt32 num;
-					UInt32 off;
-					UInt32 skip; // Ignore.
 
-					read(m_Fd, &index, 1);
-					Read16BE(len);
-					Read32BE(num);
-					Read32BE(off);
-					read(m_Fd, &skip, 4);
-					if(index == 0)
+				// Copy rtp header
+				memcpy(data+offset, &entry.m_Header, 4);
+				offset += 4;
+				// Copy rtp timestamp.
+				UInt32 ts = htonl(rtp.m_Timestamp);
+				memcpy(data+offset, &ts, 4);
+				offset += 4;
+				// Copy rtp SSRC.
+				memcpy(data+offset, &trk.m_SSRC, 4);
+				offset += 4;
+
+				for(size_t n=0; n<entry.m_Count; n++)
+				{
+					char type = 0;
+
+					read(m_Fd, &type, 1);
+					LOG_TRACE("   The type of this entry is " << int(type) << ".");
+
+					if(type == 0)
 					{
-						map<size_t, CTrack>::iterator iter = m_Tracks.find(trk.m_Refer);
-						off += iter->second.m_Samples[num-1].m_Offset;
+						assert(false);
+					}
+					else if(type == 1)
+					{
+						char pad[14];
+						char cn;
+
+						read(m_Fd, &cn, 1);
+						read(m_Fd, data+offset, cn);
+						offset += cn;
+						read(m_Fd, pad, 14-cn);
+						LOG_TRACE("    Copy " << int(cn) << " bytes.");
+					}
+					else if(type == 2)
+					{
+						char index = 0;
+						UInt16 len;
+						UInt32 num;
+						UInt32 off;
+						UInt32 skip; // Ignore.
+
+						read(m_Fd, &index, 1);
+						Read16BE(len);
+						Read32BE(num);
+						Read32BE(off);
+						read(m_Fd, &skip, 4);
+						if(index == 0)
+						{
+							map<size_t, CTrack>::iterator iter = m_Tracks.find(trk.m_Refer);
+							off += iter->second.m_Samples[num-1].m_Offset;
+						}
+						else
+							off += trk.m_Samples[num-1].m_Offset;
+						pread(m_Fd, data+offset, len, off);
+						offset += len;
+						LOG_TRACE("    Copy " << len << " bytes form sample " << num-1 << " with offset " << off << " in track " << int(index) << ".");
+					}
+					else if(type == 3)
+					{
+						assert(false);
+
+						return false;
 					}
 					else
-						off += trk.m_Samples[num-1].m_Offset;
-					pread(m_Fd, data+offset, len, off);
-					offset += len;
-					LOG_TRACE("Copy " << len << " bytes form sample " << num-1 << " with offset " << off << " in track " << int(index) << ".");
-				}
-				else if(type == 3)
-				{
-					assert(false);
+					{
+						assert(false);
 
-					return false;
+						return false;
+					}
 				}
-				else
-				{
-					assert(false);
-
-					return false;
-				}
+				packet.m_Len = offset;
+				rtp.m_Packets.push_back(packet);
 			}
+			trk.m_SampleReaded ++;
 		}
-		trk.m_SampleReaded ++;
+		else
+			return false;
 	}
 	else
 		return false;
@@ -239,7 +255,7 @@ bool CMp4Demuxer::ParseDefault(Atom atom, CTrack *track)
 					return false;
 			}
 
-			LOG_TRACE("Read atom " << PRTYPE(a.type) << " with size " << a.size << ".");
+			LOG_DEBUG("Read atom " << PRTYPE(a.type) << " with size " << a.size << ".");
 
 			a.offset = atom.offset + readed;
 			if(true == ParseAtom(a, track))
@@ -494,6 +510,8 @@ bool CMp4Demuxer::ParseTrak(Atom atom, CTrack *track)
 		LOG_TRACE("Find sample " << i << ": st/" << sample.m_Timestamp << " dur/" << sample.m_Duration << " offset/" << sample.m_Offset << " len/" << sample.m_Len);
 	}
 
+	m_Tracks.insert(std::pair<size_t, CTrack>(trk.m_ID, trk));
+
 	return true;
 }
 
@@ -587,7 +605,7 @@ bool CMp4Demuxer::ParseStts(Atom atom, CTrack *track)
 
 		Read32BE(n);
 		Read32BE(delta);
-		LOG_TRACE("\tSTTS: " << count << " samples with the same delta " << delta << ".");
+		LOG_TRACE("\tSTTS: " << n << " samples with the same delta " << delta << ".");
 
 		/** Save information */
 		for(UInt32 j=0; j<n; j++)

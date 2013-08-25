@@ -21,6 +21,8 @@ bool CMp4Player::Play(int fd)
 	if(m_StartTime == 0)
 		m_StartTime = GetCurrent();
 
+	m_Udp.Attach(fd);
+
 	if(0 == m_Mp4.GetHintID(ids))
 		return false;
 	else
@@ -31,7 +33,10 @@ bool CMp4Player::Play(int fd)
 
 			if(true == m_Mp4.GetRtpSample(ids[i], sample))
 				m_Samples.insert(std::pair<size_t, CRtpSample>(ids[i], sample));
+			break;
 		}
+
+		SetTimer(1, 0);
 	}
 
 	return true;
@@ -61,7 +66,11 @@ void CMp4Player::OnTimer()
 				vector<CRtpPacket> &packets = sample.m_Packets;
 
 				for(size_t i=0; i<packets.size(); i++)
-					m_Tcp.Send(packets[i].m_Packet, packets[i].m_Len);
+				{
+					ssize_t ret = m_Udp.Send(packets[i].m_Packet, packets[i].m_Len);
+					LOG_TRACE("Send a rtp packet with " << packets[i].m_Len << "/" << ret << " bytes.");
+				}
+				packets.clear();
 				if(false == m_Mp4.GetRtpSample(iter->first, sample))
 				{
 					m_Samples.erase(iter);

@@ -34,6 +34,8 @@ public:
 class CTrack
 {
 public:
+	CTrack();
+public:
 	UInt32 m_ID;
 	UInt32 m_Type;
 	UInt32 m_Refer;
