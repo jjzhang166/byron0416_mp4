@@ -1,3 +1,4 @@
+#include <cassert>
 #include <sys/time.h>
 #include "Common.h"
 
