@@ -1,17 +1,20 @@
 #include "Log.h"
-#include "Mp4.h"
+#include "Mp4Player.h"
 
 
 int main(int argc, char** argv)
 {
 	CLog::SetRootLevel(ALL_LOG_LEVEL);
 
-	//const string path = "3.mp4";
-	const string path = "b.mp4";
-	CMp4Demuxer mp4;
+	CUdp udp;
+	udp.Attach();
+	udp.Connect("192.168.0.101", 1234);
 
-	mp4.Parse(path);
-	mp4.Send(path);
+	const string path = "b.mp4";
+	CMp4Player rtp(NULL, NULL);
+
+	rtp.Setup(path);
+	rtp.Play(udp.GetFd());
 
 	return 0;
 }
