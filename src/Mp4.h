@@ -2,31 +2,18 @@
 #define MP4_H
 
 
-#include <vector>
-#include <string>
-#include <arpa/inet.h> //htonl
+#include <map>
 #include "Log.h"
-#include "Socket.h"
+#include "Rtp.h"
 
 
-using namespace std;
+using std::map;
 
 typedef uint16_t     UInt16;
 typedef unsigned int UInt32;
 typedef size_t       UInt64;
 
-#define PRTYPE(type) ((char*)&type)[0] << ((char*)&type)[1] << ((char*)&type)[2] << ((char*)&type)[3]
 #define MKTYPE(a, b, c, d) ((a) | (b<<8) | (c<<16) | (d<<24))
-
-#pragma pack(1)
-struct CPacketEntry
-{
-	UInt32 m_RelativeTime;
-	unsigned char  m_HeaderInfo[4];
-	UInt16 m_Flags;
-	UInt16 m_Count;
-};
-#pragma pack()
 
 struct Atom
 {
@@ -44,51 +31,51 @@ public:
 	size_t m_Len;
 };
 
-class CMp4Demuxer: public CLogger
+class CTrack
 {
 public:
-	CMp4Demuxer();
-	bool Parse(const string &path);
-	void Send(const string &path);
-private:
-	ssize_t Read16BE(int fd, UInt16&);
-	ssize_t Read16BE(int fd, UInt16&, size_t);
-	ssize_t Read32BE(int fd, UInt32&);
-	bool ParseAtom(int fd, Atom a);
-	bool ParseDefault(int fd, Atom a);
-	bool ParseFtyp(int fd, Atom a);
-	bool ParseTrak(int fd, Atom a);
-	bool ParseTkhd(int fd, Atom a);
-	bool ParseMdhd(int fd, Atom a);
-	bool ParseHdlr(int fd, Atom a);
-	bool ParseVmhd(int fd, Atom a);
-	bool ParseSmhd(int fd, Atom a);
-	bool ParseDref(int fd, Atom a);
-	bool ParseStsd(int fd, Atom a);
-	bool ParseStts(int fd, Atom a);
-	bool ParseStsz(int fd, Atom a);
-	bool ParseStsc(int fd, Atom a);
-	bool ParseStco(int fd, Atom a);
-	bool ParseStss(int fd, Atom a);
-	bool ParseElst(int fd, Atom a);
-	bool ParseHmhd(int fd, Atom a);
-	bool ParseHint(int fd, Atom a);
-	bool ParseSdp(int fd, Atom a);
-	bool ParseMeta(int fd, Atom a);
-public:
-	UInt32 m_Brand;
-	UInt32 m_TrackType;
-	UInt32 m_TrackID;
-	UInt32 m_ReferID;
+	UInt32 m_ID;
+	UInt32 m_Type;
+	UInt32 m_Refer;
+	UInt32 m_Timescale;
+	UInt32 m_SSRC;
+	string m_Sdp;
+	size_t m_SampleReaded;
 	vector<size_t> m_SampleDur;
 	vector<size_t> m_SampleSize;
 	vector<size_t> m_ChunkCapacity;
 	vector<size_t> m_ChunkOffset;
-	vector<CSample> m_VideoSamples;
-	vector<CSample> m_AudioSamples;
-	vector<CSample> m_VideoHint;
-	vector<CSample> m_AudioHint;
-	CUdp m_Udp;
+	vector<CSample> m_Samples;
+};
+
+class CMp4Demuxer: public CLogger
+{
+public:
+	CMp4Demuxer();
+	~CMp4Demuxer();
+	bool Parse(const string &path);
+	size_t GetHintID(vector<size_t>&);
+	bool GetRtpSample(size_t, CRtpSample&);
+private:
+	ssize_t Read16BE(UInt16&);
+	ssize_t Read32BE(UInt32&);
+	bool ParseDefault(Atom, CTrack*);
+	bool ParseAtom(Atom, CTrack*);
+	bool ParseFtyp(Atom, CTrack*);
+	bool ParseTrak(Atom, CTrack*);
+	bool ParseTkhd(Atom, CTrack*);
+	bool ParseMdhd(Atom, CTrack*);
+	bool ParseHdlr(Atom, CTrack*);
+	bool ParseStts(Atom, CTrack*);
+	bool ParseStsz(Atom, CTrack*);
+	bool ParseStsc(Atom, CTrack*);
+	bool ParseStco(Atom, CTrack*);
+	bool ParseStss(Atom, CTrack*);
+	bool ParseHint(Atom, CTrack*);
+	bool ParseSdp (Atom, CTrack*);
+private:
+	int m_Fd;
+	map<size_t, CTrack> m_Tracks;
 };
 
 
