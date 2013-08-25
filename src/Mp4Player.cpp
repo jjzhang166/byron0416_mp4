@@ -16,20 +16,21 @@ bool CMp4Player::Setup(const string &path)
 
 bool CMp4Player::Play(int fd)
 {
+	vector<size_t> ids;
+
 	if(m_StartTime == 0)
 		m_StartTime = GetCurrent();
 
-	map<size_t, CTrack>::iterator iter = m_Mp4.m_Tracks.begin();
-	for(; iter!=m_Mp4.m_Tracks.end(); iter++)
+	if(0 == m_Mp4.GetHintID(ids))
+		return false;
+	else
 	{
-		CTrack &track = iter->second;
-
-		if(track.m_Type == MKTYPE('h', 'i', 'n', 't'))
+		for(size_t i=0; i<ids.size(); i++)
 		{
 			CRtpSample sample;
 
-			m_Mp4.GetSample(track.m_ID, sample);
-			m_Samples.insert(pair<size_t, CRtpSample>(track.m_ID, sample));
+			if(true == m_Mp4.GetRtpSample(ids[i], sample))
+				m_Samples.insert(pair<size_t, CRtpSample>(ids[i], sample));
 		}
 	}
 
@@ -61,7 +62,7 @@ void CMp4Player::OnTimer()
 
 				for(size_t i=0; i<packets.size(); i++)
 					m_Tcp.Send(packets[i].m_Packet, packets[i].m_Len);
-				if(false == m_Mp4.GetSample(iter->first, sample))
+				if(false == m_Mp4.GetRtpSample(iter->first, sample))
 				{
 					m_Samples.erase(iter);
 					break;

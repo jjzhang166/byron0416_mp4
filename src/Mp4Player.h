@@ -3,6 +3,7 @@
 
 
 #include "Event.h"
+#include "Socket.h"
 #include "Rtp.h"
 #include "Mp4.h"
 
