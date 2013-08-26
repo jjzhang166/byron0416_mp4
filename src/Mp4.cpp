@@ -131,7 +131,7 @@ bool CMp4Demuxer::GetRtpSample(size_t id, CRtpSample &rtp)
 				memcpy(data+offset, &entry.m_Header, 4);
 				offset += 4;
 				// Copy rtp timestamp.
-				UInt32 ts = htonl(rtp.m_Timestamp);
+				UInt32 ts = htonl(sample.m_Timestamp);
 				memcpy(data+offset, &ts, 4);
 				offset += 4;
 				// Copy rtp SSRC.
