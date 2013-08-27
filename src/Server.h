@@ -5,7 +5,8 @@
 #include <list>
 #include "Event.h"
 #include "Socket.h"
-#include "Session.h"
+//#include "Session.h"
+#include "RtspSession.h"
 
 
 using std::list;
@@ -36,7 +37,7 @@ private:
 	const size_t m_SessionCount;
 	CEventEngin m_Engin;
 	CTcpServer m_Listener;
-	list<CSession*> m_Sessions;
+	list<CRtspSession*> m_Sessions;
 	volatile size_t m_Free;
 	volatile size_t m_Done;
 };

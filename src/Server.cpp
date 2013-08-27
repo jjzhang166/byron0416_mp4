@@ -1,7 +1,6 @@
 #include <sstream>
 #include <errno.h>
 #include <string.h>
-#include "HttpSession.h"
 #include "Server.h"
 
 
@@ -25,7 +24,7 @@ CEngin::~CEngin()
 	SetTimer(0, 0);
 	Unregister();
 
-	for(list<CSession*>::iterator iter=m_Sessions.begin(); iter!=m_Sessions.end(); iter++)
+	for(list<CRtspSession*>::iterator iter=m_Sessions.begin(); iter!=m_Sessions.end(); iter++)
 		delete *iter;
 
 	m_Engin.Uninitialize();
@@ -37,7 +36,7 @@ bool CEngin::Run(int listener, size_t affinity)
 {
 	for(size_t i=0; i<m_SessionCount; i++)
 	{
-		CSession *session = new CHttpSession(&m_Engin, this);
+		CRtspSession *session = new CRtspSession(&m_Engin, this);
 		if(true == session->Initialize())
 		{
 			session->SetLog(m_Log);
@@ -88,7 +87,7 @@ void CEngin::SetLog(CLog *log)
 	m_Log = log;
 
 	m_Engin.SetLog(log);
-	for(list<CSession*>::iterator iter=m_Sessions.begin(); iter!=m_Sessions.end(); iter++)
+	for(list<CRtspSession*>::iterator iter=m_Sessions.begin(); iter!=m_Sessions.end(); iter++)
 		(*iter)->SetLog(m_Log);
 }
 
@@ -121,10 +120,10 @@ void CEngin::OnRead()
 	{
 		int fd = *iter;
 
-		CSession *session = m_Sessions.front();
+		CRtspSession *session = m_Sessions.front();
 		m_Sessions.pop_front();
 
-		if(session->AcceptRequest(*iter) == true)
+		if(session->Handle(*iter) == true)
 		{
 			ostringstream out;
 
@@ -148,7 +147,7 @@ void CEngin::OnRead()
 void CEngin::OnSubEvent(const CEvent *event, ErrorCode err)
 {
 	CEvent *ev = const_cast<CEvent*>(event);
-	CSession *session = dynamic_cast<CSession*>(ev);
+	CRtspSession *session = dynamic_cast<CRtspSession*>(ev);
 
 	m_Sessions.push_back(session);
 	m_Free++;
@@ -205,6 +204,7 @@ bool CServer::Run(size_t port, const string &ip)
 	}
 
 	m_EnginCount = sysconf(_SC_NPROCESSORS_ONLN);
+	m_EnginCount = 1;
 	for(size_t i=0; i<m_EnginCount; i++)
 	{
 		CEngin *engin = new CEngin();
@@ -225,7 +225,7 @@ bool CServer::Run(size_t port, const string &ip)
 	}
 
 	m_Engin.Initialize();
-	SetTimer(5000, 5000);
+	//SetTimer(5000, 5000);
 
 	return true;
 }
