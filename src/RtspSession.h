@@ -5,6 +5,7 @@
 #include "Socket.h"
 #include "Event.h"
 #include "Rtsp.h"
+#include "Mp4Player.h"
 
 
 class CRtspSession: public CEventImplement
@@ -26,6 +27,7 @@ private:
 	size_t m_HeaderSended;
 	string m_Body;
 	size_t m_BodySended;
+	CMp4Player m_Mp4;
 };
 
 

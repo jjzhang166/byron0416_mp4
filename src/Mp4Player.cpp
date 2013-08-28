@@ -1,3 +1,4 @@
+#include <arpa/inet.h> //htonl
 #include "Common.h"
 #include "Mp4Player.h"
 
@@ -67,6 +68,10 @@ void CMp4Player::OnTimer()
 
 				for(size_t i=0; i<packets.size(); i++)
 				{
+					char num[2] = {0x24, 0x00};
+					UInt16 len = htons(packets[i].m_Len);
+					m_Udp.Send(num, 2);
+					m_Udp.Send(&len, 2);
 					ssize_t ret = m_Udp.Send(packets[i].m_Packet, packets[i].m_Len);
 					LOG_TRACE("Send a rtp packet with " << packets[i].m_Len << "/" << ret << " bytes.");
 				}
