@@ -10,6 +10,8 @@ size_t CRtspRequest::Parse(const string &buf)
 {
 	if(buf.find("\r\n\r\n") == string::npos)
 		return 0;
+	else
+		m_Fields.clear();
 
 	if(buf.size() > 2048)
 		return 413;
@@ -193,7 +195,8 @@ string CRtspResponse::Response(size_t code)
 
 	out << "\r\n";
 
-	LOG_INFO("Send a http response:\n" << out.str());
+	//LOG_INFO("Send a http response:\n" << out.str());
+	m_Fields.clear();
 
 	return out.str();
 }
