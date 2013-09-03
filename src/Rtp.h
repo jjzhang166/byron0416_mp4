@@ -31,6 +31,7 @@ public:
 	virtual ~CRtpPlayer() = 0;
 public:
 	virtual bool Setup(const string&) = 0;
+	virtual bool SetInterval(const string&, int) = 0;
 	virtual bool Play(int) = 0;
 };
 

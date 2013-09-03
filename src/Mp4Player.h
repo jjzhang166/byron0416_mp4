@@ -13,14 +13,18 @@ class CMp4Player: public CRtpPlayer, public CEventExImplement
 public:
 	CMp4Player(CEventEngin*, CEvent*);
 	bool Setup(const string&);
+	bool GetTrackID(vector<size_t>&);
+	bool GetSdp(size_t, string&);
+	bool SetInterleaved(size_t, size_t);
 	bool Play(int);
 private:
 	int GetFd() {return -1;}
 	void OnTimer();
 private:
 	CMp4Demuxer m_Mp4;
-	CTcp m_Udp;
+	CTcp m_Rtsp;
 	size_t m_StartTime;
+	map<size_t, size_t> m_Interleaved;
 	map<size_t, CRtpSample> m_Samples;
 };
 
