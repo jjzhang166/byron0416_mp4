@@ -25,13 +25,23 @@ public:
 	vector<CRtpPacket> m_Packets;
 };
 
+class CRtpSource
+{
+public:
+	virtual ~CRtpSource() = 0;
+	virtual size_t GetHintID(vector<size_t>&) = 0;
+	virtual string GetSdp(size_t) = 0;
+	virtual bool GetRtpSample(size_t, CRtpSample&) = 0;
+};
+
 class CRtpPlayer
 {
 public:
 	virtual ~CRtpPlayer() = 0;
-public:
 	virtual bool Setup(const string&) = 0;
-	virtual bool SetInterval(const string&, int) = 0;
+	virtual bool GetTrackID(vector<size_t>&) = 0;
+	virtual bool GetSdp(size_t, string&) = 0;
+	virtual bool SetInterleaved(size_t, size_t) = 0;
 	virtual bool Play(int) = 0;
 };
 

@@ -1,9 +1,10 @@
-#include <errno.h>
-#include <unistd.h>
-#include <arpa/inet.h> //htonl
-#include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <stdlib.h> //rand
+#include <arpa/inet.h> //htonl
 #include "Mp4.h"
 
 
@@ -23,7 +24,7 @@ struct CPacketEntry
 /** CTrack */
 
 CTrack::CTrack():
-	m_SampleReaded(0)
+	m_ID(0), m_Type(0), m_Timescale(0), m_Refer(0), m_SSRC(rand()), m_SampleReaded(0)
 {
 }
 
@@ -79,6 +80,16 @@ size_t CMp4Demuxer::GetHintID(vector<size_t> &ids)
 	return ids.size();
 }
 
+string CMp4Demuxer::GetSdp(size_t id)
+{
+	map<size_t, CTrack>::iterator iter = m_Tracks.find(id);
+
+	if(iter != m_Tracks.end())
+		return iter->second.m_Sdp;
+	else
+		return "";
+}
+
 bool CMp4Demuxer::GetRtpSample(size_t id, CRtpSample &rtp)
 {
 	map<size_t, CTrack>::iterator iter = m_Tracks.find(id);
@@ -90,13 +101,13 @@ bool CMp4Demuxer::GetRtpSample(size_t id, CRtpSample &rtp)
 		if(trk.m_SampleReaded < trk.m_Samples.size())
 		{
 			CSample &sample = trk.m_Samples[trk.m_SampleReaded];
+			UInt16 count=0;
+			UInt16 reserved = 0;
 
 			rtp.m_Timestamp = sample.m_Timestamp * 1000 / trk.m_Timescale;
 			lseek(m_Fd, sample.m_Offset, SEEK_SET);
-			LOG_TRACE("Get rtp sample from track " << id << ": st/" << sample.m_Timestamp << " dur/" << sample.m_Duration << " offset/" << sample.m_Offset << " len/" << sample.m_Len << ".");
+			LOG_TRACE("Get rtp sample from track-" << id << ": st/" << sample.m_Timestamp << " dur/" << sample.m_Duration << " offset/" << sample.m_Offset << " len/" << sample.m_Len << ".");
 
-			UInt16 count=0;
-			UInt16 reserved = 0;
 			Read16BE(count);
 			Read16BE(reserved);
 			LOG_TRACE(" This sample have " << count << " rtp packets.");
@@ -114,16 +125,15 @@ bool CMp4Demuxer::GetRtpSample(size_t id, CRtpSample &rtp)
 
 				if(entry.m_Header[0] != 0x80)
 				{
-					//LOG_WARN("Get a unknown version rtp packet with " << std::hex << int(entry.m_Header[0]));
+					LOG_WARN("Get a unknown version 0x" << std::hex << int(entry.m_Header[0]) << " rtp packet");
 					entry.m_Header[0] = 0x80;
 				}
 
-				assert(entry.m_Flags == 0);
-				if(entry.m_Flags & 0x00000004)
+				if(entry.m_Flags & 0x00000004) // Skip extra data.
 				{
 					UInt32 len;
 					Read32BE(len);
-					lseek(m_Fd, len-4, SEEK_CUR); // Skip extra data.
+					lseek(m_Fd, len-4, SEEK_CUR);
 					LOG_DEBUG("This packet have " << len << " bytes extra data.");
 				}
 
@@ -201,14 +211,14 @@ bool CMp4Demuxer::GetRtpSample(size_t id, CRtpSample &rtp)
 				rtp.m_Packets.push_back(packet);
 			}
 			trk.m_SampleReaded ++;
+
+			return true;
 		}
 		else
 			return false;
 	}
 	else
 		return false;
-
-	return true;
 }
 
 inline ssize_t CMp4Demuxer::Read16BE(UInt16 &value)
@@ -540,7 +550,7 @@ bool CMp4Demuxer::ParseTkhd(Atom atom, CTrack *track)
 	}
 
 	Read32BE(track->m_ID);
-	LOG_DEBUG("Get track id " << track->m_ID << ".");
+	LOG_DEBUG("Get track with id " << track->m_ID << ".");
 
 	return true;
 }

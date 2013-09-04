@@ -38,25 +38,27 @@ public:
 public:
 	UInt32 m_ID;
 	UInt32 m_Type;
-	UInt32 m_Refer;
 	UInt32 m_Timescale;
-	UInt32 m_SSRC;
-	string m_Sdp;
-	size_t m_SampleReaded;
-	vector<size_t> m_SampleDur;
-	vector<size_t> m_SampleSize;
-	vector<size_t> m_ChunkCapacity;
-	vector<size_t> m_ChunkOffset;
+	UInt32 m_Refer; //For hint.
+	UInt32 m_SSRC; //For hint.
+	string m_Sdp; //For hint.
+	vector<size_t> m_SampleDur; //temp
+	vector<size_t> m_SampleSize; //temp
+	vector<size_t> m_ChunkCapacity; //temp
+	vector<size_t> m_ChunkOffset; //temp
 	vector<CSample> m_Samples;
+	size_t m_SampleReaded;
 };
 
-class CMp4Demuxer: public CLogger
+class CMp4Demuxer: public CRtpSource, public CLogger
 {
 public:
 	CMp4Demuxer();
 	~CMp4Demuxer();
-	bool Parse(const string &path);
+	bool Parse(const string&);
+	/** CRtpSource */
 	size_t GetHintID(vector<size_t>&);
+	string GetSdp(size_t);
 	bool GetRtpSample(size_t, CRtpSample&);
 private:
 	ssize_t Read16BE(UInt16&);

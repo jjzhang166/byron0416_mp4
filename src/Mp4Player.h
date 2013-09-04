@@ -12,12 +12,14 @@ class CMp4Player: public CRtpPlayer, public CEventExImplement
 {
 public:
 	CMp4Player(CEventEngin*, CEvent*);
+	/** CRtpPlayer */
 	bool Setup(const string&);
 	bool GetTrackID(vector<size_t>&);
 	bool GetSdp(size_t, string&);
 	bool SetInterleaved(size_t, size_t);
 	bool Play(int);
 private:
+	/** CEventExImplement */
 	int GetFd() {return -1;}
 	void OnTimer();
 private:

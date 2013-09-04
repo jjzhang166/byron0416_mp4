@@ -1,7 +1,9 @@
-#include <arpa/inet.h> //htonl
-#include "Common.h"
+#include <arpa/inet.h> //htons
+#include "Common.h" // GetCurrent()
 #include "Mp4Player.h"
 
+
+/** CMp4Player */
 
 CMp4Player::CMp4Player(CEventEngin *engin, CEvent *pre):
 	CEventExImplement(engin, pre)
@@ -25,21 +27,23 @@ bool CMp4Player::GetTrackID(vector<size_t> &ids)
 
 bool CMp4Player::GetSdp(size_t id, string &sdp)
 {
-	return m_Mp4.GetSdp(id, sdp);
+	sdp = m_Mp4.GetSdp(id);
+
+	return true;
 }
 
 bool CMp4Player::SetInterleaved(size_t id, size_t interleaved)
 {
-	m_Interleaved.insert(pair<size_t, size_t>(id, interleaved));
+	m_Interleaved.insert(std::pair<size_t, size_t>(id, interleaved));
+
+	return true;
 }
 
 bool CMp4Player::Play(int fd)
 {
 	vector<size_t> ids;
 
-	if(m_StartTime == 0)
-		m_StartTime = GetCurrent();
-
+	m_StartTime = GetCurrent();
 	m_Rtsp.Attach(fd);
 
 	if(0 == m_Mp4.GetHintID(ids))
@@ -52,20 +56,19 @@ bool CMp4Player::Play(int fd)
 
 			if(true == m_Mp4.GetRtpSample(ids[i], sample))
 				m_Samples.insert(std::pair<size_t, CRtpSample>(ids[i], sample));
-			break;
 		}
 
 		SetTimer(1, 0);
-	}
 
-	return true;
+		return true;
+	}
 }
 
 void CMp4Player::OnTimer()
 {
 	size_t now = 0;
 
-	if(m_Samples.empty())
+	if(m_Samples.empty()) // Play to the end.
 	{
 		SetTimer(0, 0);
 		ReturnSubEvent(E_OK);
@@ -77,8 +80,8 @@ void CMp4Player::OnTimer()
 	for(iter=m_Samples.begin(); iter!=m_Samples.end(); iter++)
 	{
 		char interleaved = -1;
-		map<size_t, CRtpSample>::iterator i = m_Interleaved.find(iter->first);
-		if(i != m_Interleaved)
+		map<size_t, size_t>::iterator i = m_Interleaved.find(iter->first);
+		if(i != m_Interleaved.end())
 			interleaved  = i->second;
 		else
 			continue;
