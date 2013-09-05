@@ -127,7 +127,7 @@ void CEngin::OnRead()
 		{
 			ostringstream out;
 
-			LOG_INFO("Accept a connect(" << fd << ") with session " << m_Done << ".");
+			LOG_INFO("Accept a request(" << fd << ") with session " << m_Done << ".");
 
 			out << m_Done << "@" << m_Title;
 			session->SetTitle(out.str());

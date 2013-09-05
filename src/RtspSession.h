@@ -4,7 +4,7 @@
 
 #include "Socket.h"
 #include "Event.h"
-#include "Rtsp.h"
+#include "Http.h"
 #include "Mp4Player.h"
 
 
@@ -14,20 +14,26 @@ public:
 	CRtspSession(CEventEngin*, CEvent*);
 	virtual ~CRtspSession();
 	bool Initialize();
-	virtual bool Handle(int fd);
-	int GetFd() {return m_Socket.GetFd();}
+	bool Handle(int fd);
+private:
+	void ProcessRequest();
+	void OnDescribe();
+	void OnSetup();
+	void OnPlay();
+	void SendError(ErrorCode);
+	void Close();
+	/** CEventImplement */
+	int GetFd() {return m_Connect.GetFd();}
 	void OnRead();
 	void OnWrite();
 private:
-	CTcp m_Socket;
-	CRtspRequest m_Request;
-	CRtspResponse m_Response;
-	string m_Buf;
-	string m_Header;
+	CTcp m_Connect;
+	CHttpRequest m_Request;
+	CHttpResponse m_Response;
+	CMp4Player m_Mp4;
 	size_t m_HeaderSended;
 	string m_Body;
 	size_t m_BodySended;
-	CMp4Player m_Mp4;
 };
 
 

@@ -6,17 +6,29 @@ using namespace std;
 
 /* CRtspRequest */
 
-size_t CRtspRequest::Parse(const string &buf)
+void CRtspRequest::Initialize()
 {
-	if(buf.find("\r\n\r\n") == string::npos)
-		return 0;
-	else
-		m_Fields.clear();
+	m_Request = "";
+	m_Method = "";
+	m_Url = "";
+	m_Params = "";
+	m_FullUrl = "";
+	m_Suffix = "";
+	m_ParamMap.clear();
+	m_FieldMap.clear();
+}
 
-	if(buf.size() > 2048)
-		return 413;
+ErrorCode CRtspRequest::Parse(const string &buf)
+{
+	m_Request += buf;
 
-	LOG_INFO("Get a rtsp request:\n" << buf);
+	if(m_Request.size() > 2048)
+		return E_ENTITYTOOLARGE;
+
+	if(m_Request.find("\r\n\r\n") == string::npos)
+		return E_CONTINUE;
+
+	LOG_INFO("Get a http request: " << m_Request);
 
 	stringstream lines(buf);
 	const size_t LEN = 1024;
