@@ -18,7 +18,7 @@ public:
 private:
 	void ProcessRequest();
 	void OnDescribe();
-	void OnSetup();
+	bool OnSetup();
 	void OnPlay();
 	void SendError(ErrorCode);
 	void Close();
@@ -31,6 +31,8 @@ private:
 	CHttpRequest m_Request;
 	CHttpResponse m_Response;
 	CMp4Player m_Mp4;
+	size_t m_Type; //RTSP=1 or RTCP=2
+	size_t m_RTCP; //Length of RTCP packet
 	size_t m_HeaderSended;
 	string m_Body;
 	size_t m_BodySended;

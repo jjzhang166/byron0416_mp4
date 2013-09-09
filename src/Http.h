@@ -31,6 +31,7 @@ public:
 	string GetRequest() const {return m_Request;}
 	string GetMethod() const {return m_Method;}
 	string GetUrl() const {return m_Url;}
+	string GetFile() const {return m_File;}
 	string GetParams() const {return m_ParamString;}
 	string GetFullUrl() const {return m_FullUrl;}
 	string GetMime();
@@ -44,6 +45,7 @@ private:
 	string m_Request;
 	string m_Method;
 	string m_Url;
+	string m_File;
 	string m_ParamString;
 	string m_FullUrl;
 	string m_Suffix;

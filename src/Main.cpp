@@ -1,5 +1,6 @@
 #include "Log.h"
 #include "Event.h"
+#include "Disk.h"
 #include "Server.h"
 //#include "Mp4Player.h"
 
@@ -9,7 +10,7 @@ int main(int argc, char** argv)
 	CLog::SetRootLevel(ALL_LOG_LEVEL);
 
 	CServer server;
-	server.Run(8554);
+	server.Run(8080);
 	/*
 	CUdp udp;
 	udp.Attach();

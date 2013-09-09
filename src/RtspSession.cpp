@@ -1,8 +1,11 @@
-//#include <sstream>
+#include <arpa/inet.h> //ntohs
+#include <sstream>
 //#include "stdlib.h"
 #include <errno.h>
 #include "RtspSession.h"
 
+
+using std::istringstream;
 
 CRtspSession::CRtspSession(CEventEngin *engin, CEvent *pre):
 	CEventImplement(engin, pre), m_Mp4(engin, this)
@@ -125,18 +128,60 @@ void CRtspSession::ProcessRequest()
 void CRtspSession::OnDescribe()
 {
 	vector<size_t> ids;
+	string sdp;
 
-	m_Mp4.Setup("b.mp4");
+	m_Mp4.Setup(m_Request.GetFile());
 	m_Mp4.GetTrackID(ids);
-	m_Mp4.GetSdp(ids[0], m_Body);
+	for(size_t i=0; i<ids.size(); i++)
+	{
+		m_Mp4.GetSdp(ids[i], sdp);
+		m_Body += sdp;
+	}
 }
 
-void CRtspSession::OnSetup()
+bool CRtspSession::OnSetup()
 {
+	size_t id;
+
+	/** find track */
+	string track = m_Request.GetFile();
+	track.substr(track.rfind("/")+1, string::npos);
+
+	/** find id */
+	size_t pos = track.find("trackID=");
+	if(pos != string::npos)
+	{
+		istringstream in(track.substr(pos+8, string::npos));
+		in >> id;
+
+		/** interleaved */
+		{
+			string transport;
+			size_t interleaved;
+			size_t pos;
+
+			m_Request.GetField("Transport", transport);
+			pos = transport.find("interleaved=");
+			if(pos != string::npos)
+			{
+				istringstream num(transport.substr(pos+12, string::npos));
+				num >> interleaved;
+				m_Mp4.SetInterleaved(id, interleaved);
+			}
+			else
+				return false;
+
+		}
+
+		return true;
+	}
+	else
+		return false;
 }
 
 void CRtspSession::OnPlay()
 {
+	assert(m_Mp4.Play(GetFd()));
 }
 
 void CRtspSession::SendError(ErrorCode)
@@ -152,13 +197,33 @@ void CRtspSession::OnRead()
 	while(true)
 	{
 		const ssize_t LEN = 1024;
-		char buf[LEN+1] = {0};
+		char BUF[LEN+1] = {0};
+		char *buf = BUF;
 		ssize_t len = m_Connect.Recv(buf, LEN);
 		if(len > 0)
 		{
 			if(buf[0] == '$') /** RTCP */
-				return;
-			else
+			{
+				m_Type = 2;
+				m_RTCP = ntohs(*(uint16_t*)(buf+2));
+				buf += 4;
+				len -=4;
+				//LOG_TRACE("Get a RTCP packet with " << m_RTCP << " bytes.");
+			}
+
+			if(m_Type == 2)
+			{
+				if(size_t(len) >= m_RTCP)
+				{
+					m_Type = 1;
+					buf += m_RTCP;
+					len -= m_RTCP;
+				}
+				if(len == 0)
+					return;
+			}
+
+			//m_Type==1
 			{
 				ErrorCode code = m_Request.Parse(buf);
 				if(code == E_OK)

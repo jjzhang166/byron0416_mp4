@@ -107,19 +107,34 @@ bool CHttpRequest::GetField(const string &name, string &value) const
 
 inline ErrorCode CHttpRequest::ParseUrl(const string &url)
 {
+	/** method */
 	m_Method = url.substr(0, url.find(" "));
 
+	/** full url */
 	m_FullUrl = url.substr(url.find(" ")+1, string::npos);
 	m_FullUrl = m_FullUrl.substr(0, m_FullUrl.find(" "));
 	if(m_FullUrl.find("?") != string::npos)
 	{
+		/** url */
 		m_Url = m_FullUrl.substr(0, m_FullUrl.find("?"));
+
+		/** param */
 		m_ParamString = m_FullUrl.substr(m_FullUrl.find("?")+1, string::npos);
 		if(false == ParseParam(m_ParamString))
 			return E_BADREQUEST;
 	}
 	else
 		m_Url = m_FullUrl;
+
+	/** file */
+	size_t pos = m_Url.find("://");
+	if(pos != string::npos)
+	{
+		pos = m_Url.find("/", pos+3);
+		m_File = m_Url.substr(pos+1, string::npos);
+	}
+	else
+		m_File = m_Url;
 
 	m_Suffix = m_Url.substr(m_Url.rfind(".")+1, string::npos);
 
