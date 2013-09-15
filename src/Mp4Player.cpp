@@ -113,6 +113,7 @@ void CMp4Player::OnTimer()
 			else
 			{
 				ts -= now-m_StartTime;
+				ts = ts>0 ? ts : 1;
 				SetTimer(ts, 0);
 				break;
 			}
