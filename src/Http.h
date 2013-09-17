@@ -24,7 +24,7 @@ public:
 	 * @retval E_METHODNOTALLOWED
 	 * @retval E_ENTITYTOOLARGE
 	 */
-	ErrorCode Parse(const string &buf);
+	ErrorCode Parse(const char*, ssize_t&);
 	/**
 	 * Get url without parameters from a http request.
 	 */

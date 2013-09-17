@@ -1,17 +1,21 @@
 #include <arpa/inet.h> //ntohs
 #include <sstream>
-//#include "stdlib.h"
 #include <errno.h>
+#include "Thread.h"
 #include "RtspSession.h"
 
 
 using std::istringstream;
+using std::ostringstream;
+
+/** CRtspSession */
+
+size_t CRtspSession::m_Session = 0x1111111111111111;
+CMutex CRtspSession::m_Mutex;
 
 CRtspSession::CRtspSession(CEventEngin *engin, CEvent *pre):
 	CEventImplement(engin, pre), m_Mp4(engin, this)
 {
-	//ALL//m_Body = "v=0\r\no=- 15404613757824320910 15404613757824320910 IN IP4 Byron-PC\r\ns=Unnamed\r\ni=N/A\r\nc=IN IP4 0.0.0.0\r\nt=0 0\r\na=tool:vlc 2.0.7\r\na=recvonly\r\na=type:broadcast\r\na=charset:UTF-8\r\na=control:rtsp://192.168.0.100:8554/aaaa\r\nm=audio 0 RTP/AVP 96\r\nb=RR:0\r\na=rtpmap:96 mpeg4-generic/8000\r\na=fmtp:96 streamtype=5; profile-level-id=15; mode=AAC-hbr; config=1588; SizeLength=13; IndexLength=3; IndexDeltaLength=3; Profile=1;\r\na=control:rtsp://192.168.0.100:8554/aaaa/trackID=0\r\nm=video 0 RTP/AVP 96\r\nb=RR:0\r\na=rtpmap:96 MP4V-ES/90000\r\na=fmtp:96 profile-level-id=3; config=000001b001000001b50ee040c0cf0000010000000120008440fa28282078a21f;\r\na=control:rtsp://192.168.0.100:8554/aaaa/trackID=1\r\n";
-	m_Body = "v=0\r\no=- 15404613757824320910 15404613757824320910 IN IP4 Byron-PC\r\ns=Unnamed\r\ni=N/A\r\nc=IN IP4 0.0.0.0\r\nt=0 0\r\na=tool:vlc 2.0.7\r\na=recvonly\r\na=type:broadcast\r\na=charset:UTF-8\r\na=control:rtsp://192.168.0.100:8554/aaaa\r\nm=video 0 RTP/AVP 96\r\nb=RR:0\r\na=rtpmap:96 MP4V-ES/90000\r\na=fmtp:96 profile-level-id=3; config=000001b001000001b50ee040c0cf0000010000000120008440fa28282078a21f;\r\na=control:rtsp://192.168.0.100:8554/aaaa/trackID=1\r\n";
 }
 
 CRtspSession::~CRtspSession()
@@ -64,7 +68,7 @@ void CRtspSession::ProcessRequest()
 	{
 		//Public
 		name = "Public";
-		value = "OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE, SCALE, GET_PARAMETER";
+		value = "OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE, GET_PARAMETER";
 		m_Response.AddField(name, value);
 	}
 	else if(m_Request.GetMethod() == "DESCRIBE")
@@ -94,7 +98,9 @@ void CRtspSession::ProcessRequest()
 
 		//Session
 		name = "Session";
-		value = "d3d8b954dcd7d072";
+		m_Request.GetField(name, value);
+		if(value.empty())
+			value = GetSessionID();
 		m_Response.AddField(name, value);
 
 		//Transport
@@ -113,6 +119,15 @@ void CRtspSession::ProcessRequest()
 	}
 	else if(m_Request.GetMethod() == "GET_PARAMETER")
 	{
+		//Session
+		name = "Session";
+		m_Request.GetField(name, value);
+		m_Response.AddField(name, value);
+	}
+	else if(m_Request.GetMethod() == "PAUSE")
+	{
+		OnPause();
+
 		//Session
 		name = "Session";
 		m_Request.GetField(name, value);
@@ -184,12 +199,30 @@ void CRtspSession::OnPlay()
 	assert(m_Mp4.Play(GetFd()));
 }
 
+void CRtspSession::OnPause()
+{
+	assert(m_Mp4.Pause());
+}
+
 void CRtspSession::SendError(ErrorCode)
 {
 }
 
 void CRtspSession::Close()
 {
+}
+
+string CRtspSession::GetSessionID()
+{
+	{
+		CAutoMutex mutex(&m_Mutex);
+		m_Session ++;
+	}
+
+	ostringstream out;
+	out << std::hex << m_Session;
+
+	return out.str();
 }
 
 void CRtspSession::OnRead()
@@ -202,39 +235,49 @@ void CRtspSession::OnRead()
 		ssize_t len = m_Connect.Recv(buf, LEN);
 		if(len > 0)
 		{
-			if(buf[0] == '$') /** RTCP */
+			while(len > 0)
 			{
-				m_Type = 2;
-				m_RTCP = ntohs(*(uint16_t*)(buf+2));
-				buf += 4;
-				len -=4;
-				//LOG_TRACE("Get a RTCP packet with " << m_RTCP << " bytes.");
-			}
-
-			if(m_Type == 2)
-			{
-				if(size_t(len) >= m_RTCP)
+				if(m_Type == 0)
 				{
-					m_Type = 1;
-					buf += m_RTCP;
-					len -= m_RTCP;
-				}
-				if(len == 0)
-					return;
-			}
+					if(buf[0] != '$') /** RTCP */
+					{
+						m_Type = 1;
 
-			//m_Type==1
-			{
-				ErrorCode code = m_Request.Parse(buf);
-				if(code == E_OK)
-				{
-					LOG_INFO("Get a rtsp request: " << m_Request.GetRequest());
-					return ProcessRequest();
+					}
+					else
+					{
+						m_Type = 2;
+						buf += 2;
+						len -= 2;
+					}
 				}
-				else if(code == E_CONTINUE)
-					continue;
-				else
-					return SendError(code);
+
+				if(m_Type == 1)
+				{
+					ErrorCode code = m_Request.Parse(buf, len);
+					if(code == E_OK)
+					{
+						LOG_INFO("Get a rtsp request: " << m_Request.GetRequest());
+						ProcessRequest();
+						continue;
+					}
+					else if(code == E_CONTINUE)
+						break;
+					else
+						return SendError(code);
+				}
+
+				if(m_Type == 2)
+				{
+					ErrorCode code = m_Rtcp.Parse(buf, len);
+					if(code == E_OK)
+						continue;
+					else if(code == E_CONTINUE)
+						break; 
+					else
+						return SendError(code);
+				}
+
 			}
 		}
 		else if(len == 0)
@@ -286,4 +329,9 @@ void CRtspSession::OnWrite()
 	}
 
 	RegisterRD();
+}
+
+void CRtspSession::OnError()
+{
+	Close();
 }

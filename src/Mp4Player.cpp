@@ -64,6 +64,19 @@ bool CMp4Player::Play(int fd)
 	}
 }
 
+bool CMp4Player::Pause()
+{
+	m_Pause = GetCurrent();
+	SetTimer(0, 0);
+}
+
+bool CMp4Player::Resume()
+{
+	m_Pause -= GetCurrent();
+	m_StartTime += m_Pause;
+	SetTimer(1, 0);
+}
+
 void CMp4Player::OnTimer()
 {
 	size_t now = 0;
@@ -96,7 +109,7 @@ void CMp4Player::OnTimer()
 
 				for(size_t i=0; i<packets.size(); i++)
 				{
-					char num[2] = {0x24, interleaved};
+					char num[2] = {0x24, interleaved}; //$
 					UInt16 len = htons(packets[i].m_Len);
 					m_Rtsp.Send(num, 2);
 					m_Rtsp.Send(&len, 2);

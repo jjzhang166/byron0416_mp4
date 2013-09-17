@@ -20,14 +20,18 @@ void CHttpRequest::Initialize()
 	m_Fields.clear();
 }
 
-ErrorCode CHttpRequest::Parse(const string &buf)
+ErrorCode CHttpRequest::Parse(const char *buf, ssize_t &len)
 {
+	size_t old = m_Request.size();
 	m_Request += buf;
 
 	if(m_Request.size() > 2048)
 		return E_ENTITYTOOLARGE;
 
-	if(m_Request.find("\r\n\r\n") == string::npos)
+	size_t pos = m_Request.find("\r\n\r\n");
+	if(pos != string::npos)
+		len -= pos+5-old;
+	else
 		return E_CONTINUE;
 
 	istringstream lines(m_Request);
@@ -102,7 +106,11 @@ bool CHttpRequest::GetField(const string &name, string &value) const
 		return true;
 	}
 	else 
+	{
+		value = "";
+
 		return false;
+	}
 }
 
 inline ErrorCode CHttpRequest::ParseUrl(const string &url)

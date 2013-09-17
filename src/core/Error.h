@@ -2,6 +2,9 @@
 #define ERROR_H
 
 
+#include <cstddef>
+
+
 typedef size_t ErrorCode;
 
 #define E_CONTINUE         100

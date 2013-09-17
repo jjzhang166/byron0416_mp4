@@ -61,8 +61,8 @@ public:
 	string GetSdp(size_t);
 	bool GetRtpSample(size_t, CRtpSample&);
 private:
-	ssize_t Read16BE(UInt16&);
-	ssize_t Read32BE(UInt32&);
+	bool Read16BE(UInt16&);
+	bool Read32BE(UInt32&);
 	bool ParseDefault(Atom, CTrack*);
 	bool ParseAtom(Atom, CTrack*);
 	bool ParseFtyp(Atom, CTrack*);
