@@ -57,7 +57,7 @@ public:
 	~CMp4Demuxer();
 	bool Parse(const string&);
 	/** CRtpSource */
-	size_t GetHintID(vector<size_t>&);
+	size_t GetTrackID(vector<size_t>&);
 	string GetSdp(size_t);
 	bool GetRtpSample(size_t, CRtpSample&);
 private:

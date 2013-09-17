@@ -19,7 +19,7 @@ bool CMp4Player::Setup(const string &path)
 
 bool CMp4Player::GetTrackID(vector<size_t> &ids)
 {
-	if(0 == m_Mp4.GetHintID(ids))
+	if(0 == m_Mp4.GetTrackID(ids))
 		return false;
 	else
 		return true;
@@ -46,7 +46,7 @@ bool CMp4Player::Play(int fd)
 	m_StartTime = GetCurrent();
 	m_Rtsp.Attach(fd);
 
-	if(0 == m_Mp4.GetHintID(ids))
+	if(0 == m_Mp4.GetTrackID(ids))
 		return false;
 	else
 	{

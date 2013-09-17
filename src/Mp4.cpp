@@ -65,7 +65,7 @@ bool CMp4Demuxer::Parse(const string &file)
 	}
 }
 
-size_t CMp4Demuxer::GetHintID(vector<size_t> &ids)
+size_t CMp4Demuxer::GetTrackID(vector<size_t> &ids)
 {
 	map<size_t, CTrack>::iterator iter;
 
@@ -282,7 +282,8 @@ bool CMp4Demuxer::ParseDefault(Atom atom, CTrack *track)
 			if(true == ParseAtom(a, track))
 			{
 				readed += a.size;
-				lseek(m_Fd, atom.offset+readed, SEEK_SET);
+				if(-1 == lseek(m_Fd, atom.offset+readed, SEEK_SET))
+					return false;
 			}
 			else
 				return false;
@@ -469,8 +470,8 @@ bool CMp4Demuxer::ParseFtyp(Atom atom, CTrack *track)
 {
 	UInt32 brand;
 
-	int ret = read(m_Fd, &brand, 4);
-	if(ret == 4)
+	int ret = read(m_Fd, &brand, sizeof(brand));
+	if(ret == sizeof(brand))
 	{
 		if(brand == MKTYPE('m', 'p', '4', '2'))
 		{
@@ -496,7 +497,7 @@ bool CMp4Demuxer::ParseTrak(Atom atom, CTrack *track)
 	if(false == ParseDefault(atom, &trk))
 		return false;
 
-	size_t ts = 0;
+	size_t ts = 0; // Timestamp
 	size_t cidx = 0;
 	size_t coffset = trk.m_ChunkOffset[cidx];
 	size_t ccapacity = trk.m_ChunkCapacity[cidx];
@@ -539,9 +540,10 @@ bool CMp4Demuxer::ParseTkhd(Atom atom, CTrack *track)
 {
 	UInt32 version;
 
-	if(false == Read32BE(version))
+	if(true == Read32BE(version))
+		version = version >> 24;
+	else
 		return false;
-	version = version >> 24;
 
 	if(version == 1)
 	{
@@ -560,9 +562,12 @@ bool CMp4Demuxer::ParseTkhd(Atom atom, CTrack *track)
 		Read32BE(modify);
 	}
 
-	if(0 > Read32BE(track->m_ID))
+	if(true == Read32BE(track->m_ID))
+	{
+		LOG_DEBUG("Get track with id " << track->m_ID << ".");
+	}
+	else
 		return false;
-	LOG_DEBUG("Get track with id " << track->m_ID << ".");
 
 	return true;
 }
@@ -571,9 +576,10 @@ bool CMp4Demuxer::ParseMdhd(Atom atom, CTrack *track)
 {
 	UInt32 version;
 
-	if(false == Read32BE(version))
+	if(true == Read32BE(version))
+		version = version >> 24;
+	else
 		return false;
-	version = version >> 24;
 
 	if(version == 1)
 	{
@@ -592,9 +598,12 @@ bool CMp4Demuxer::ParseMdhd(Atom atom, CTrack *track)
 		read(m_Fd, &modify, 4);
 	}
 
-	if(false == Read32BE(track->m_Timescale))
+	if(true == Read32BE(track->m_Timescale))
+	{
+		LOG_DEBUG("Get timescale " << track->m_Timescale << ".");
+	}
+	else
 		return false;
-	LOG_DEBUG("Get timescale " << track->m_Timescale << ".");
 
 	return true;
 }
@@ -621,7 +630,9 @@ bool CMp4Demuxer::ParseStts(Atom atom, CTrack *track)
 	UInt32 version;
 	UInt32 count;
 
-	read(m_Fd, &version, 4);
+	if(false == Read32BE(version))
+		return false;
+
 	if(true == Read32BE(count))
 	{
 		LOG_DEBUG("\tSTTS: Get " << count << " entries.");
@@ -654,7 +665,8 @@ bool CMp4Demuxer::ParseStsz(Atom atom, CTrack *track)
 	UInt32 size;
 	UInt32 count;
 
-	read(m_Fd, &version, 4);
+	if(false == Read32BE(version))
+		return false;
 	if(false == Read32BE(size))
 		return false;
 	if(false == Read32BE(count))
@@ -730,6 +742,7 @@ bool CMp4Demuxer::ParseStco(Atom atom, CTrack *track)
 		return false;
 	if(false == Read32BE(count))
 		return false;
+
 	LOG_DEBUG("\tSTCO: Get " << count << " chunks.");
 
 	for(UInt32 i=0; i<count; i++)
@@ -783,9 +796,13 @@ bool CMp4Demuxer::ParseSdp(Atom atom, CTrack *track)
 	const size_t LEN = 2048;
 	char buf[LEN] = {0};
 
-	read(m_Fd, buf, LEN);
-	track->m_Sdp = buf;
-	LOG_DEBUG("\tSDP: " << buf);
+	if(0 < read(m_Fd, buf, LEN))
+	{
+		track->m_Sdp = buf;
+		LOG_DEBUG("\tSDP: " << buf);
 
-	return true;
+		return true;
+	}
+	else
+		return false;
 }
