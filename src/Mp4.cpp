@@ -104,10 +104,12 @@ bool CMp4Demuxer::GetRtpSample(size_t id, CRtpSample &rtp)
 			UInt16 count=0;
 			UInt16 reserved = 0;
 
-			rtp.m_Timestamp = sample.m_Timestamp * 1000 / trk.m_Timescale;
-			lseek(m_Fd, sample.m_Offset, SEEK_SET);
 			LOG_TRACE("Get rtp sample from track-" << id << ": st/" << sample.m_Timestamp << " dur/" << sample.m_Duration << " offset/" << sample.m_Offset << " len/" << sample.m_Len << ".");
 
+			rtp.m_Timestamp = sample.m_Timestamp * 1000 / trk.m_Timescale;
+
+			if(-1 == lseek(m_Fd, sample.m_Offset, SEEK_SET))
+				return false;
 			if(false == Read16BE(count))
 				return false;
 			if(false == Read16BE(reserved))
@@ -128,7 +130,7 @@ bool CMp4Demuxer::GetRtpSample(size_t id, CRtpSample &rtp)
 
 				if(entry.m_Header[0] != 0x80)
 				{
-					//LOG_WARN("Get a unknown version 0x" << std::hex << int(entry.m_Header[0]) << " rtp packet");
+					//LOG_WARN("Get a unknown version 0x" << std::hex << int(entry.m_Header[0]) << " rtp packet.");
 					entry.m_Header[0] = 0x80;
 				}
 
@@ -137,7 +139,8 @@ bool CMp4Demuxer::GetRtpSample(size_t id, CRtpSample &rtp)
 					UInt32 len;
 					if(false == Read32BE(len))
 						return false;
-					lseek(m_Fd, len-4, SEEK_CUR);
+					if(-1 == lseek(m_Fd, len-4, SEEK_CUR))
+						return false;
 					LOG_DEBUG("This packet have " << len << " bytes extra data.");
 				}
 
@@ -194,12 +197,15 @@ bool CMp4Demuxer::GetRtpSample(size_t id, CRtpSample &rtp)
 							return false;
 						if(false == Read32BE(off))
 							return false;
-						if(4 != read(m_Fd, &skip, 4))
+						if(false == Read32BE(skip))
 							return false;
 						if(index == 0)
 						{
 							map<size_t, CTrack>::iterator iter = m_Tracks.find(trk.m_Refer);
-							off += iter->second.m_Samples[num-1].m_Offset;
+							if(iter != m_Tracks.end())
+								off += iter->second.m_Samples[num-1].m_Offset;
+							else
+								return false;
 						}
 						else
 							off += trk.m_Samples[num-1].m_Offset;
@@ -229,7 +235,7 @@ bool CMp4Demuxer::GetRtpSample(size_t id, CRtpSample &rtp)
 			return true;
 		}
 		else
-			return false;
+			return true; // The end.
 	}
 	else
 		return false;
