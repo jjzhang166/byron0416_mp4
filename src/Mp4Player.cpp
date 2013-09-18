@@ -1,4 +1,4 @@
-#include <arpa/inet.h> //htons
+#include <arpa/inet.h> // htons
 #include "Common.h" // GetCurrent()
 #include "Mp4Player.h"
 
@@ -64,30 +64,18 @@ bool CMp4Player::Play(int fd)
 	}
 }
 
-bool CMp4Player::Pause()
+void CMp4Player::Teardown()
 {
-	m_Pause = GetCurrent();
 	SetTimer(0, 0);
-}
-
-bool CMp4Player::Resume()
-{
-	m_Pause -= GetCurrent();
-	m_StartTime += m_Pause;
-	SetTimer(1, 0);
+	m_Mp4.Close();
+	m_Rtsp.Detach();
+	m_Interleaved.clear();
+	m_Samples.clear();
 }
 
 void CMp4Player::OnTimer()
 {
-	size_t now = 0;
-
-	if(m_Samples.empty()) // Play to the end.
-	{
-		SetTimer(0, 0);
-		ReturnSubEvent(E_OK);
-	}
-	else
-		now = GetCurrent();
+	size_t now = GetCurrent();
 
 	map<size_t, CRtpSample>::iterator iter;
 	for(iter=m_Samples.begin(); iter!=m_Samples.end(); iter++)
@@ -95,9 +83,12 @@ void CMp4Player::OnTimer()
 		char interleaved = -1;
 		map<size_t, size_t>::iterator i = m_Interleaved.find(iter->first);
 		if(i != m_Interleaved.end())
-			interleaved  = i->second;
+			interleaved = i->second;
 		else
+		{
+			m_Samples.erase(iter);
 			continue;
+		}
 
 		while(true)
 		{
@@ -119,17 +110,34 @@ void CMp4Player::OnTimer()
 				packets.clear();
 				if(false == m_Mp4.GetRtpSample(iter->first, sample))
 				{
-					m_Samples.erase(iter);
-					break;
+					Teardown();
+					LOG_WARN("Failed to get rtp packets from track " << iter->first << ".");
+					return ReturnSubEvent(E_ERROR);
+				}
+				else
+				{
+					if(sample.m_Packets.empty())
+					{
+						m_Samples.erase(iter);
+						break;
+					}
 				}
 			}
 			else
 			{
-				ts -= now-m_StartTime;
-				ts = ts>0 ? ts : 1;
+				if(ts > now-m_StartTime)
+					ts -= now-m_StartTime;
+				else
+					ts = 1;
 				SetTimer(ts, 0);
 				break;
 			}
 		}
+	}
+
+	if(m_Samples.empty()) // Play to the end.
+	{
+		Teardown();
+		return ReturnSubEvent(E_OK);
 	}
 }

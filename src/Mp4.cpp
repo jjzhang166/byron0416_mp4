@@ -38,8 +38,7 @@ CMp4Demuxer::CMp4Demuxer():
 
 CMp4Demuxer::~CMp4Demuxer()
 {
-	if(m_Fd > 0)
-		close(m_Fd);
+	Close();
 }
 
 bool CMp4Demuxer::Parse(const string &file)
@@ -62,6 +61,15 @@ bool CMp4Demuxer::Parse(const string &file)
 		LOG_ERROR("Failed to open " << file << "(" << strerror(errno) << ").");
 
 		return false;
+	}
+}
+
+void CMp4Demuxer::Close()
+{
+	if(m_Fd > 0)
+	{
+		close(m_Fd);
+		m_Fd = -1;
 	}
 }
 

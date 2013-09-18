@@ -126,12 +126,7 @@ void CRtspSession::ProcessRequest()
 	}
 	else if(m_Request.GetMethod() == "PAUSE")
 	{
-		OnPause();
-
-		//Session
-		name = "Session";
-		m_Request.GetField(name, value);
-		m_Response.AddField(name, value);
+		assert(false);
 	}
 
 	m_Request.Initialize();
@@ -197,11 +192,6 @@ bool CRtspSession::OnSetup()
 void CRtspSession::OnPlay()
 {
 	assert(m_Mp4.Play(GetFd()));
-}
-
-void CRtspSession::OnPause()
-{
-	assert(m_Mp4.Pause());
 }
 
 void CRtspSession::SendError(ErrorCode)

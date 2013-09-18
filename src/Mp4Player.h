@@ -18,8 +18,7 @@ public:
 	bool GetSdp(size_t, string&);
 	bool SetInterleaved(size_t, size_t);
 	bool Play(int);
-	bool Pause();
-	bool Resume();
+	void Teardown();
 private:
 	/** CEventExImplement */
 	int GetFd() {return -1;}
@@ -28,7 +27,6 @@ private:
 	CMp4Demuxer m_Mp4;
 	CTcp m_Rtsp;
 	size_t m_StartTime;
-	size_t m_Pause;
 	map<size_t, size_t> m_Interleaved;
 	map<size_t, CRtpSample> m_Samples;
 };

@@ -56,6 +56,7 @@ public:
 	CMp4Demuxer();
 	~CMp4Demuxer();
 	bool Parse(const string&);
+	void Close();
 	/** CRtpSource */
 	size_t GetTrackID(vector<size_t>&);
 	string GetSdp(size_t);
