@@ -13,7 +13,7 @@ public:
 	/**
 	 * @param len Return used size.
 	 */
-	ErrorCode Parse(const char*, ssize_t &len);
+	ErrorCode Parse(const char*, size_t &len);
 private:
 	size_t m_Len;
 };

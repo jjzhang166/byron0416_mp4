@@ -1,7 +1,6 @@
 #include <arpa/inet.h> //ntohs
 #include <sstream>
 #include <errno.h>
-#include "Thread.h"
 #include "RtspSession.h"
 
 
@@ -10,7 +9,7 @@ using std::ostringstream;
 
 /** CRtspSession */
 
-size_t CRtspSession::m_Session = 0x1111111111111111;
+size_t CRtspSession::m_Session = 0x1111111111111110;
 CMutex CRtspSession::m_Mutex;
 
 CRtspSession::CRtspSession(CEventEngin *engin, CEvent *pre):
@@ -20,6 +19,7 @@ CRtspSession::CRtspSession(CEventEngin *engin, CEvent *pre):
 
 CRtspSession::~CRtspSession()
 {
+	Close();
 }
 
 bool CRtspSession::Initialize()
@@ -33,6 +33,19 @@ bool CRtspSession::Handle(int fd)
 	RegisterRD();
 
 	return true;
+}
+
+string CRtspSession::GetSessionID()
+{
+	{
+		CAutoMutex mutex(&m_Mutex);
+		m_Session ++;
+	}
+
+	ostringstream out;
+	out << std::hex << m_Session;
+
+	return out.str();
 }
 
 void CRtspSession::ProcessRequest()
@@ -180,7 +193,6 @@ bool CRtspSession::OnSetup()
 			}
 			else
 				return false;
-
 		}
 
 		return true;
@@ -196,23 +208,16 @@ void CRtspSession::OnPlay()
 
 void CRtspSession::SendError(ErrorCode)
 {
+	Close();
 }
 
 void CRtspSession::Close()
 {
-}
+	Unregister();
+	m_Connect.Close();
+	m_Mp4.Teardown();
 
-string CRtspSession::GetSessionID()
-{
-	{
-		CAutoMutex mutex(&m_Mutex);
-		m_Session ++;
-	}
-
-	ostringstream out;
-	out << std::hex << m_Session;
-
-	return out.str();
+	ReturnSubEvent(E_OK);
 }
 
 void CRtspSession::OnRead()
@@ -221,30 +226,32 @@ void CRtspSession::OnRead()
 	{
 		const ssize_t LEN = 1024;
 		char BUF[LEN+1] = {0};
-		char *buf = BUF;
-		ssize_t len = m_Connect.Recv(buf, LEN);
+		ssize_t len = m_Connect.Recv(BUF, LEN);
 		if(len > 0)
 		{
-			while(len > 0)
+			char *buf = BUF;
+			size_t l = len;
+			while(l > 0)
 			{
 				if(m_Type == 0)
 				{
-					if(buf[0] != '$') /** RTCP */
-					{
+					if(buf[0] != '$') /** RTSP */
 						m_Type = 1;
-
-					}
-					else
+					else /** RTCP */
 					{
 						m_Type = 2;
 						buf += 2;
-						len -= 2;
+						l -= 2;
 					}
 				}
-
-				if(m_Type == 1)
+				else if(m_Type == 1) /** RTSP */
 				{
-					ErrorCode code = m_Request.Parse(buf, len);
+					size_t n = l;
+
+					ErrorCode code = m_Request.Parse(buf, n);
+					l -= n;
+					buf += n;
+
 					if(code == E_OK)
 					{
 						LOG_INFO("Get a rtsp request: " << m_Request.GetRequest());
@@ -256,10 +263,14 @@ void CRtspSession::OnRead()
 					else
 						return SendError(code);
 				}
-
-				if(m_Type == 2)
+				else if(m_Type == 2) /** RTCP */
 				{
-					ErrorCode code = m_Rtcp.Parse(buf, len);
+					size_t n = l;
+
+					ErrorCode code = m_Rtcp.Parse(buf, l);
+					l -= n;
+					buf += n;
+
 					if(code == E_OK)
 						continue;
 					else if(code == E_CONTINUE)
@@ -267,7 +278,6 @@ void CRtspSession::OnRead()
 					else
 						return SendError(code);
 				}
-
 			}
 		}
 		else if(len == 0)
@@ -292,12 +302,13 @@ void CRtspSession::OnRead()
 
 void CRtspSession::OnWrite()
 {
-	size_t len;
+	ssize_t len;
 
 	while(true)
 	{
 		if(m_HeaderSended == 0)
 			LOG_INFO("Send a response:\n" << m_Response.GetHeader());
+
 		if(m_HeaderSended < m_Response.GetHeader().size())
 		{
 			len = m_Connect.Send(m_Response.GetHeader().data()+m_HeaderSended, m_Response.GetHeader().size()-m_HeaderSended);
@@ -315,6 +326,24 @@ void CRtspSession::OnWrite()
 			}
 			else
 				break;
+		}
+
+		if(len == 0)
+		{
+			LOG_INFO("Socket is closed by client when writing data.");
+
+			return Close();
+		}
+		else if(-1 == len)
+		{
+			if(errno == EAGAIN)
+				return;
+			else
+			{
+				LOG_WARN("Failed to send socket(" << errno << ").");
+
+				return Close();
+			}
 		}
 	}
 

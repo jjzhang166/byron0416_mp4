@@ -11,7 +11,7 @@ CRtcp::~CRtcp()
 {
 }
 
-ErrorCode CRtcp::Parse(const char *buf, ssize_t &len)
+ErrorCode CRtcp::Parse(const char *buf, size_t &len)
 {
 	size_t used = 0;
 
@@ -21,7 +21,7 @@ ErrorCode CRtcp::Parse(const char *buf, ssize_t &len)
 		{
 			size_t min = m_Len<=len ? m_Len : len;
 			m_Len -= min;
-			uesd += min;
+			used += min;
 
 			len = used;
 			if(m_Len == 0)

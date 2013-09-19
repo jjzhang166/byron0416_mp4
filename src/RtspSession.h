@@ -17,14 +17,13 @@ public:
 	bool Initialize();
 	bool Handle(int fd);
 private:
+	string GetSessionID();
 	void ProcessRequest();
 	void OnDescribe();
 	bool OnSetup();
 	void OnPlay();
-	void OnPause();
 	void SendError(ErrorCode);
 	void Close();
-	string GetSessionID();
 	/** CEventImplement */
 	int GetFd() {return m_Connect.GetFd();}
 	void OnRead();
@@ -37,7 +36,6 @@ private:
 	CRtcp m_Rtcp;
 	CMp4Player m_Mp4;
 	size_t m_Type; //RTSP=1 or RTCP=2
-	size_t m_RTCP; //Length of RTCP packet
 	size_t m_HeaderSended;
 	string m_Body;
 	size_t m_BodySended;

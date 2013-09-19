@@ -25,7 +25,7 @@ public:
 	 * @retval E_METHODNOTALLOWED
 	 * @retval E_ENTITYTOOLARGE
 	 */
-	ErrorCode Parse(const char*, ssize_t &len);
+	ErrorCode Parse(const char*, size_t &len);
 	string GetRequest() const {return m_Request;}
 	string GetMethod() const {return m_Method;}
 	string GetFullUrl() const {return m_FullUrl;}

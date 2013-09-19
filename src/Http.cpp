@@ -22,7 +22,7 @@ void CHttpRequest::Initialize()
 	m_Fields.clear();
 }
 
-ErrorCode CHttpRequest::Parse(const char *buf, ssize_t &len)
+ErrorCode CHttpRequest::Parse(const char *buf, size_t &len)
 {
 	size_t old = m_Request.size();
 	m_Request += buf;
