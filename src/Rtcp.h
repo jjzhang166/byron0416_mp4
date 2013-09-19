@@ -10,7 +10,10 @@ class CRtcp
 public:
 	CRtcp();
 	~CRtcp();
-	ErrorCode Parse(const char*, ssize_t&);
+	/**
+	 * @param len Return used size.
+	 */
+	ErrorCode Parse(const char*, ssize_t &len);
 private:
 	size_t m_Len;
 };

@@ -13,14 +13,17 @@ CRtcp::~CRtcp()
 
 ErrorCode CRtcp::Parse(const char *buf, ssize_t &len)
 {
+	size_t used = 0;
+
 	while(true)
 	{
 		if(m_Len > 0)
 		{
 			size_t min = m_Len<=len ? m_Len : len;
 			m_Len -= min;
-			len -= min;
+			uesd += min;
 
+			len = used;
 			if(m_Len == 0)
 				return E_OK;
 			else
@@ -28,8 +31,10 @@ ErrorCode CRtcp::Parse(const char *buf, ssize_t &len)
 		}
 		else if(m_Len == 0)
 		{
-			m_Len = *(uint16_t*)buf;
+			m_Len = ntohs(*(uint16_t*)buf);
+
 			len -= 2;
+			used += 2;
 		}
 	}
 }
