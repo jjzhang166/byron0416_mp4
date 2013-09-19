@@ -18,22 +18,23 @@ public:
 	void Initialize();
 	/**
 	 * Parse http request.
+	 * @param len retrun used length.
 	 * @retval E_CONTINUE Have not got whole entity.
 	 * @retval E_OK Have parsed all http request.
 	 * @retval E_BADREQUEST
 	 * @retval E_METHODNOTALLOWED
 	 * @retval E_ENTITYTOOLARGE
 	 */
-	ErrorCode Parse(const char*, ssize_t&);
+	ErrorCode Parse(const char*, ssize_t &len);
+	string GetRequest() const {return m_Request;}
+	string GetMethod() const {return m_Method;}
+	string GetFullUrl() const {return m_FullUrl;}
 	/**
 	 * Get url without parameters from a http request.
 	 */
-	string GetRequest() const {return m_Request;}
-	string GetMethod() const {return m_Method;}
 	string GetUrl() const {return m_Url;}
-	string GetFile() const {return m_File;}
 	string GetParams() const {return m_ParamString;}
-	string GetFullUrl() const {return m_FullUrl;}
+	string GetFile() const {return m_File;}
 	string GetMime();
 	bool GetParam(const string &name, string &value) const;
 	bool GetField(const string &name, string &value) const;
@@ -44,10 +45,10 @@ private:
 private:
 	string m_Request;
 	string m_Method;
-	string m_Url;
-	string m_File;
-	string m_ParamString;
 	string m_FullUrl;
+	string m_Url;
+	string m_ParamString;
+	string m_File;
 	string m_Suffix;
 	map<string, string> m_Params;
 	map<string, string> m_Fields;

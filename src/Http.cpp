@@ -6,15 +6,17 @@ using std::istringstream;
 using std::ostringstream;
 using std::pair;
 
+
 /** CHttpRequest */
 
 void CHttpRequest::Initialize()
 {
 	m_Request = "";
 	m_Method = "";
+	m_FullUrl = "";
 	m_Url = "";
 	m_ParamString = "";
-	m_FullUrl = "";
+	m_File = "";
 	m_Suffix = "";
 	m_Params.clear();
 	m_Fields.clear();
@@ -92,7 +94,11 @@ bool CHttpRequest::GetParam(const string &name, string &value) const
 		return true;
 	}
 	else 
+	{
+		value = "";
+
 		return false;
+	}
 }
 
 bool CHttpRequest::GetField(const string &name, string &value) const
