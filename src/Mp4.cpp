@@ -71,6 +71,7 @@ void CMp4Demuxer::Close()
 		close(m_Fd);
 		m_Fd = -1;
 	}
+	m_Tracks.clear();
 }
 
 size_t CMp4Demuxer::GetTrackID(vector<size_t> &ids)

@@ -11,7 +11,7 @@ using std::ostringstream;
 CMutex CEngin::m_Mutex;
 
 CEngin::CEngin():
-	CEventExImplement(&m_Engin, NULL), m_SessionCount(30)
+	CEventExImplement(&m_Engin, NULL), m_SessionCount(2)
 {
 	m_Free = m_SessionCount;
 	m_Done = 0;
