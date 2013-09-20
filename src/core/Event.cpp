@@ -46,17 +46,17 @@ bool CEvent::RegisterPriority()
 
 bool CEvent::RegisterRD()
 {
-	return Register(EVENTREAD);
+	return Register(ETREAD);
 }
 
 bool CEvent::RegisterWR()
 {
-	return Register(EVENTWRITE);
+	return Register(ETWRITE);
 }
 
 bool CEvent::RegisterRW()
 {
-	return Register(EVENTREAD|EVENTWRITE);
+	return Register(ETREAD|ETWRITE);
 }
 
 bool CEvent::Unregister()
@@ -87,7 +87,7 @@ inline bool CEvent::Register(int tag)
 	{
 		if(false == m_Added)
 		{
-			if(true == m_Engin->Add(this, tag|EVENTET))
+			if(true == m_Engin->Add(this, tag|ETET))
 			{
 				m_Added = true;
 
@@ -97,7 +97,7 @@ inline bool CEvent::Register(int tag)
 				return false;
 		}
 		else
-			return m_Engin->Mod(this, tag|EVENTET);
+			return m_Engin->Mod(this, tag|ETET);
 	}
 	else
 		return false;
@@ -113,25 +113,25 @@ CEventImplement::CEventImplement(CEventEngin *engin, CEvent *pre):
 
 void CEventImplement::OnRead()
 {
-	LOG_WARN("Have no implementation for CEvent::OnRead.");
+	LOG_FATAL("Have no implementation for CEvent::OnRead.");
 	assert(false);
 }
 
 void CEventImplement::OnWrite()
 {
-	LOG_WARN("Have no implementation for CEvent::OnWrite.");
+	LOG_FATAL("Have no implementation for CEvent::OnWrite.");
 	assert(false);
 }
 
 void CEventImplement::OnError()
 {
-	LOG_WARN("Have no implementation for CEvent::OnError.");
+	LOG_FATAL("Have no implementation for CEvent::OnError.");
 	assert(false);
 }
 
-void CEventImplement::OnSubEvent(CEvent *obj, ErrorCode err)
+void CEventImplement::OnSubEvent(const CEvent*, ErrorCode)
 {
-	LOG_WARN("Have no implementation for CEvent::OnSubEvent.");
+	LOG_FATAL("Have no implementation for CEvent::OnSubEvent.");
 	assert(false);
 }
 
@@ -143,49 +143,51 @@ CTimer::~CTimer()
 	Uninitialize();
 }
 
-inline bool CTimer::SetTimer(size_t val, size_t inter)
+inline bool CTimer::SetTimer(size_t value, size_t interval)
 {
-	if(val==0 && inter==0)
+	if(value==0 && interval==0)
 	{
 		Uninitialize();
 
 		return true;
 	}
 
-	if(false == Initialize())
-		return false;
+	if(true == Initialize())
+	{
+		itimerspec ts;
 
-	itimerspec ts;
+		ts.it_value.tv_sec = value / 1000000000;
+		ts.it_value.tv_nsec = value % 1000000000; 
+		ts.it_interval.tv_sec = interval / 1000000000;
+		ts.it_interval.tv_nsec = interval % 1000000000;
 
-	ts.it_value.tv_sec = val / 1000000000;
-	ts.it_value.tv_nsec = val % 1000000000; 
-	ts.it_interval.tv_sec = inter / 1000000000;
-	ts.it_interval.tv_nsec = inter % 1000000000;
-
-	if(0 != timerfd_settime(m_Fd, 0, &ts, NULL))
-		return false;
+		if(0 == timerfd_settime(m_Fd, 0, &ts, NULL))
+			return true;
+		else
+			return false;
+	}
 	else
-		return true;
+		return false;
 }
 
-bool CTimer::Initialize()
+inline bool CTimer::Initialize()
 {
-	if(m_Fd == -1)
+	if(m_Fd > 0)
+		return true;
+	else
 	{
 		m_Fd = timerfd_create(CLOCK_MONOTONIC, O_NONBLOCK);
 
-		if(-1 == m_Fd)
-			return false;
-		else
+		if(m_Fd > 0)
 			return RegisterRD();
+		else
+			return false;
 	}
-	else
-		return true;
 }
 
 void CTimer::Uninitialize()
 {
-	if(m_Fd != -1)
+	if(m_Fd > 0)
 	{
 		Unregister();
 		close(m_Fd);
@@ -200,6 +202,8 @@ void CTimer::OnRead()
 		size_t n;
 		read(m_Fd, &n, sizeof n);
 	}
+	else
+		assert(false);
 
 	CEventEx *pre = dynamic_cast<CEventEx*>(m_Pre);
 	if(pre)
@@ -222,45 +226,46 @@ CEventExImplement::CEventExImplement(CEventEngin *engin, CEvent *pre):
 {
 }
 
-bool CEventExImplement::SetTimer(size_t val, size_t inter)
+bool CEventExImplement::SetTimer(size_t value, size_t interval)
 {
-	return m_Timer.SetTimer(val*1000000, inter*1000000);
+	return m_Timer.SetTimer(value*1000000, interval*1000000);
 }
 
 void CEventExImplement::OnRead()
 {
-	LOG_WARN("Have no implementation for CEventEx::OnRead.");
+	LOG_FATAL("Have no implementation for CEventEx::OnRead.");
 	assert(false);
 }
 
 void CEventExImplement::OnWrite()
 {
-	LOG_WARN("Have no implementation for CEventEx::OnWrite.");
+	LOG_FATAL("Have no implementation for CEventEx::OnWrite.");
 	assert(false);
 }
 
 void CEventExImplement::OnError()
 {
-	LOG_WARN("Have no implementation for CEventEx::OnError.");
+	LOG_FATAL("Have no implementation for CEventEx::OnError.");
 	assert(false);
 }
 
-void CEventExImplement::OnSubEvent(CEvent *event, ErrorCode err)
+void CEventExImplement::OnSubEvent(const CEvent*, ErrorCode)
 {
-	LOG_WARN("Have no implementation for CEventEx::OnSubEvent.");
+	LOG_FATAL("Have no implementation for CEventEx::OnSubEvent.");
 	assert(false);
 }
 
 void CEventExImplement::OnTimer()
 {
-	LOG_WARN("Have no implementation for CEventEx::OnTimer.");
+	LOG_FATAL("Have no implementation for CEventEx::OnTimer.");
 	assert(false);
 }
 
 
 /** CEventEngin */
 
-CEventEngin::CEventEngin(): m_Fd(-1), m_Priority(NULL), m_Doing(false)
+CEventEngin::CEventEngin():
+	m_Fd(-1), m_Priority(NULL), m_Doing(false)
 {
 }
 
@@ -294,7 +299,7 @@ bool CEventEngin::Initialize(ssize_t affinity)
 
 bool CEventEngin::AddPriority(CEvent *event)
 {
-	if(true == Add(event, EVENTREAD))
+	if(true == Add(event, ETREAD))
 	{
 		m_Priority = event;
 
@@ -308,44 +313,44 @@ bool CEventEngin::Add(CEvent *event, int tag)
 {
 	struct epoll_event et = {0};
 
-	if(tag & EVENTREAD)
+	if(tag & ETREAD)
 		et.events |= EPOLLIN;
-	if(tag & EVENTWRITE)
+	if(tag & ETWRITE)
 		et.events |= EPOLLOUT;
-	if(tag & EVENTET)
+	if(tag & ETET)
 		et.events |= EPOLLET;
 	et.data.ptr = (void*)event;
 
-	if(-1 == epoll_ctl(m_Fd, EPOLL_CTL_ADD, event->GetFd(), &et))
+	if(0 == epoll_ctl(m_Fd, EPOLL_CTL_ADD, event->GetFd(), &et))
+		return true;
+	else
 	{
 		LOG_ERROR("Failed to add fd " << event->GetFd() << " into epoll(" << strerror(errno) << ").");
 
 		return false;
 	}
-	else
-		return true;
 }
 
 bool CEventEngin::Mod(CEvent *event, int tag)
 {
 	struct epoll_event et = {0};
 
-	if(tag & EVENTREAD)
+	if(tag & ETREAD)
 		et.events |= EPOLLIN;
-	if(tag & EVENTWRITE)
+	if(tag & ETWRITE)
 		et.events |= EPOLLOUT;
-	if(tag & EVENTET)
+	if(tag & ETET)
 		et.events |= EPOLLET;
 	et.data.ptr = (void*)event;
 
-	if(-1 == epoll_ctl(m_Fd, EPOLL_CTL_MOD, event->GetFd(), &et))
+	if(0 == epoll_ctl(m_Fd, EPOLL_CTL_MOD, event->GetFd(), &et))
+		return true;
+	else
 	{
-		LOG_ERROR("Failed to modify event type for fd " << event->GetFd() << " with epoll(" << strerror(errno) << ").");
+		LOG_ERROR("Failed to modify fd " << event->GetFd() << " in epoll(" << strerror(errno) << ").");
 
 		return false;
 	}
-	else
-		return true;
 }
 
 bool CEventEngin::Del(CEvent *event)
@@ -355,14 +360,14 @@ bool CEventEngin::Del(CEvent *event)
 	if(m_Doing == true)
 		m_Delete.push_back(event);
 
-	if(-1 == epoll_ctl(m_Fd, EPOLL_CTL_DEL, event->GetFd(), &et))
+	if(0 == epoll_ctl(m_Fd, EPOLL_CTL_DEL, event->GetFd(), &et))
+		return true;
+	else
 	{
 		LOG_ERROR("Failed to delete fd " << event->GetFd() << " from epoll(" << strerror(errno) << ").");
 
 		return false;
 	}
-	else
-		return true;
 }
 
 bool CEventEngin::Uninitialize()
@@ -392,9 +397,13 @@ void CEventEngin::Thread()
 		if(m_Priority == event)
 		{
 			//LOG_TRACE("Get a new epoll event for priority(" << m_Events[priority].data.ptr << ":" << m_Events[priority].events << ").");
-			if(m_Events[priority].events & EPOLLIN)
+			if(m_Events[priority].events == EPOLLIN)
+			{
 				event->OnRead();
-			break;
+				break;
+			}
+			else
+				assert(false);
 		}
 	}
 
@@ -438,6 +447,6 @@ void CEventEngin::Thread()
 		case EINTR:
 			break;
 		default:
-			LOG_ERROR("Failed to wait for a epoll event(" << strerror(errno) << ").");
+			LOG_ERROR("Failed to wait for epoll event(" << strerror(errno) << ").");
 		}
 }

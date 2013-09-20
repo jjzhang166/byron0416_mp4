@@ -5,7 +5,8 @@
 
 /** CThread */
 
-CThread::CThread(ssize_t affinity): m_Thread(0), m_Affinity(affinity), m_Run(true)
+CThread::CThread(ssize_t affinity):
+	m_Thread(0), m_Affinity(affinity), m_Run(true)
 {
 }
 
@@ -36,20 +37,20 @@ bool CThread::SetAffinity(ssize_t affinity)
 			cpu_set_t mask;
 			CPU_ZERO(&mask);
 			CPU_SET(m_Affinity, &mask);
-			if(pthread_setaffinity_np(m_Thread, sizeof(mask), &mask) < 0)
+			if(pthread_setaffinity_np(m_Thread, sizeof(mask), &mask) == 0)
+				return true;
+			else
 			{
 				LOG_ERROR("Set thread affinity failed for cpu #" << m_Affinity << ".");
 
 				return false;
 			}
-			else
-				return true;
 		}
 		else
-			return false;
+			return true;
 	}
 	else
-		return false; 
+		return true; 
 }
 
 bool CThread::Stop()
@@ -62,8 +63,8 @@ bool CThread::Stop()
 		LOG_INFO("Thread " << m_Thread << " is terminated.");
 
 		m_Thread = 0;
-		m_Run = true;
 		m_Affinity = -1;
+		m_Run = true;
 	}
 
 	return true;

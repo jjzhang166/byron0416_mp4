@@ -112,7 +112,7 @@ void CMp4Player::OnTimer()
 				{
 					Teardown();
 					LOG_WARN("Failed to get rtp packets from track " << iter->first << ".");
-					return ReturnSubEvent(E_ERROR);
+					return ReturnEvent(E_ERROR);
 				}
 				else
 				{
@@ -138,6 +138,6 @@ void CMp4Player::OnTimer()
 	if(m_Samples.empty()) // Play to the end.
 	{
 		Teardown();
-		return ReturnSubEvent(E_OK);
+		return ReturnEvent(E_OK);
 	}
 }

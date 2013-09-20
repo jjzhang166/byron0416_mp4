@@ -7,15 +7,24 @@
 
 
 const size_t ALIGN_SIZE = 512;
+vector<string> CDiskIO::m_Paths;
+
+void CDiskIO::AddPath(const string &path)
+{
+	if(path[path.size()-1] == '/')
+		m_Paths.push_back(path);
+	else
+		m_Paths.push_back(path+"/");
+}
 
 CDiskIO::CDiskIO(CEventEngin *engin):
 	CAsyncIO(engin)
 {
 	m_Fd = -1;
-	m_EventFd = -1;
 	m_Offset = 0;
 	m_Len = 0;
 	m_Buf = NULL;
+	m_EventFd = -1;
 }
 
 CDiskIO::~CDiskIO()
@@ -27,62 +36,56 @@ void CDiskIO::AsyncRead(const string &path, size_t offset, size_t len, CEvent *e
 {
 	struct iocb cb = {0};
 	struct iocb *cbp = &cb;
-	struct stat fs;
+	void *b = NULL;
+	size_t size = 0;
 	int ret;
 
 	m_Pre = event;
 	m_Buf = buf;
 
-	if(stat(path.c_str(), &fs) == 0)
+	LOG_INFO("Read file from disk(" << path << ":" << offset << ":" << len << ").");
+
+	size = Open(path);
+	if(size > 0)
 	{
-		if(Open(path) == false)
-			return;
+		if(len==0 || len>size)
+			len = size;
 	}
 	else
-	{
-		int err = errno;
-		LOG_WARN("Failed to stat file " << path << "(" << strerror(errno) << ").");
-		if(err == EACCES)
-			return ReturnSubEvent(E_FORBIDDEN);
-		else
-			return ReturnSubEvent(E_NOTFOUND);
-	}
-
-	if(len==0 || len>size_t(fs.st_size))
-		len = fs.st_size;
+		return; // Failed to open file.
 
 	m_Offset = offset;
 	m_Len = len;
 	offset = offset / ALIGN_SIZE * ALIGN_SIZE;
-	size_t l = (m_Offset + len + ALIGN_SIZE - 1) / ALIGN_SIZE * ALIGN_SIZE - offset;
+	size_t l = (m_Offset + len + ALIGN_SIZE - 1) / ALIGN_SIZE * ALIGN_SIZE - offset; // Actually need to read.
 	m_Offset -= offset;
 
-	if(false == m_Buf->Alloc(l))
+	if(true == m_Buf->Alloc(l))
+	{
+		b = m_Buf->GetData(len);
+		m_Buf->SetOffset(m_Offset);
+	}
+	else
 	{
 		Close();
-
-		return ReturnSubEvent(E_ERROR);
+		return ReturnEvent(E_ERROR);
 	}
-	void *b = m_Buf->GetData(len);
-	m_Buf->SetOffset(m_Offset);
 
 	m_EventFd = eventfd(0, EFD_NONBLOCK|EFD_CLOEXEC);
 	if(m_EventFd == -1)
 	{
-		LOG_ERROR("Failed to create event fd.(" << errno << ")");
+		LOG_ERROR("Failed to create event fd(" << errno << ").");
 		Close();
-
-		return ReturnSubEvent(E_ERROR);
+		return ReturnEvent(E_ERROR);
 	}
 
 	memset(&m_Ctx, 0, sizeof(m_Ctx));
 	ret = io_setup(1, &m_Ctx);
 	if(ret != 0)
 	{
-		LOG_ERROR("Failed to initialize io object.(" << ret << ")");
+		LOG_ERROR("Failed to initialize io object(" << ret << ").");
 		Close();
-
-		return ReturnSubEvent(E_ERROR);
+		return ReturnEvent(E_ERROR);
 	}
 	io_prep_pread(&cb, m_Fd, b, l, offset);
 	io_set_eventfd(&cb, m_EventFd);
@@ -91,49 +94,88 @@ void CDiskIO::AsyncRead(const string &path, size_t offset, size_t len, CEvent *e
 	{
 		LOG_ERROR("Failed to submit io request for " << path << "(" << ret << ").");
 		Close();
-
-		return ReturnSubEvent(E_ERROR);
+		return ReturnEvent(E_ERROR);
 	}
-
-	LOG_INFO("Submit a io request to disk(" << path << ":" << offset << ":" << m_Len << ").");
 
 	if(false == RegisterRD())
 	{
 		Close();
-
-		return ReturnSubEvent(E_ERROR);
+		return ReturnEvent(E_ERROR);
 	}
+
+	LOG_DEBUG("Submit a io request to disk(" << path << ":" << offset << ":" << l << ").");
 }
 
-bool CDiskIO::Open(const string &path)
+size_t CDiskIO::GetFilePath(string &path)
 {
-	m_Fd = open(path.c_str(), O_RDONLY|O_DIRECT|O_LARGEFILE|O_NONBLOCK, 0);
-	if(m_Fd == -1)
-	{
-		int err = errno;
-		LOG_WARN("Failed to open file " << path << "(" << strerror(err) << ").");
-		if(err == EACCES)
-			ReturnSubEvent(E_FORBIDDEN);
-		else
-			ReturnSubEvent(E_NOTFOUND);
+	struct stat fs;
 
-		return false;
+	for(size_t i=0; i<m_Paths.size(); i++)
+	{
+		string tmp = m_Paths[i] + path;
+		if(stat(tmp.c_str(), &fs) == 0)
+		{
+			path = tmp;
+
+			return fs.st_size;
+		}
+		else
+		{
+			if(errno != ENOENT)
+				LOG_WARN("Failed to stat file " << tmp << "(" << strerror(errno) << ").");
+		}
 	}
 
-	return true;
+	return 0;
+}
+
+size_t CDiskIO::Open(const string &path)
+{
+	string full = path;
+
+	size_t size = GetFilePath(full);
+	if(size > 0)
+	{
+		LOG_DEBUG("Open file " << full << ".");
+		m_Fd = open(full.c_str(), O_RDONLY|O_DIRECT|O_LARGEFILE|O_NONBLOCK, 0);
+
+		if(m_Fd > 0)
+		{
+			return size;
+		}
+		else
+		{
+			int err = errno;
+			LOG_WARN("Failed to open file " << full << "(" << strerror(err) << ").");
+			if(err == EACCES)
+				ReturnEvent(E_FORBIDDEN);
+			else
+				ReturnEvent(E_ERROR);
+
+			return 0;
+		}
+	}
+	else
+	{
+		LOG_WARN("Cannot find " << path << " file in configured paths.");
+		ReturnEvent(E_NOTFOUND);
+
+		return 0;
+	}
 }
 
 void CDiskIO::Close()
 {
-	LOG_DEBUG("Close this io object.");
-
 	if(m_Fd > 0)
 	{
-		io_destroy(m_Ctx);
-
 		close(m_Fd);
 		m_Fd = -1;
+		io_destroy(m_Ctx);
 	}
+
+	m_Offset = 0;
+	m_Len = 0;
+	m_Buf = NULL;
 
 	if(m_EventFd > 0)
 	{
@@ -141,10 +183,6 @@ void CDiskIO::Close()
 		close(m_EventFd);
 		m_EventFd = -1;
 	}
-
-	m_Offset = 0;
-	m_Len = 0;
-	m_Buf = NULL;
 }
 
 void CDiskIO::OnRead()
@@ -167,18 +205,22 @@ void CDiskIO::OnRead()
 				LOG_INFO("Disk io get " << m_Len << " bytes.")
 				Close();
 
-				return ReturnSubEvent(E_OK);
+				return ReturnEvent(E_OK);
 			}
 			else
 			{
 				LOG_WARN("Failed to read file.")
-				return ReturnSubEvent(E_ERROR);
+				Close();
+
+				return ReturnEvent(E_ERROR);
 			}
 		}
 		else
 		{
 			LOG_WARN("Eventfd get(" << finish <<") more than one reading event.");
-			return ReturnSubEvent(E_ERROR);
+			Close();
+
+			return ReturnEvent(E_ERROR);
 		}
 	}
 }

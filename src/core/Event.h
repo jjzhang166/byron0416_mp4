@@ -14,14 +14,14 @@ using std::vector;
 
 enum EVENT_TYPE
 {
-	EVENT_READ  = 0x01,
-#define EVENTREAD EVENT_READ
-	EVENT_WRITE = 0x02,
-#define EVENTWRITE EVENT_WRITE
-	EVENT_ERROR = 0x04,
-#define EVENTERROR EVENT_ERROR
-	EVENT_ET = 0x08
-#define EVENTET EVENT_ET
+	ET_READ = 0x01,
+#define ETREAD ET_READ
+	ET_WRITE = 0x02,
+#define ETWRITE ET_WRITE
+	ET_ERROR = 0x04,
+#define ETERROR ET_ERROR
+	ET_ET = 0x08
+#define ETET ET_ET
 };
 
 class CEventEngin;
@@ -35,14 +35,14 @@ public:
 	virtual void OnRead()  = 0;
 	virtual void OnWrite() = 0;
 	virtual void OnError() = 0;
-	virtual void OnSubEvent(CEvent*, ErrorCode) = 0;
+	virtual void OnSubEvent(const CEvent*, ErrorCode) = 0;
 protected:
 	bool RegisterPriority();
 	bool RegisterRD();
 	bool RegisterWR();
 	bool RegisterRW();
 	bool Unregister();
-	void ReturnSubEvent(ErrorCode err){m_Pre->OnSubEvent(this, err);}
+	void ReturnEvent(ErrorCode err) {m_Pre->OnSubEvent(this, err);}
 private:
 	bool Register(int tag);
 protected:
@@ -58,7 +58,7 @@ public:
 	void OnRead();
 	void OnWrite();
 	void OnError();
-	void OnSubEvent(CEvent*, ErrorCode);
+	void OnSubEvent(const CEvent*, ErrorCode);
 };
 
 class CTimer: public CEventImplement
@@ -67,10 +67,10 @@ public:
 	CTimer(CEventEngin *engin, CEvent *pre): CEventImplement(engin, pre), m_Fd(-1) {}
 	~CTimer();
 	/**
-	 * @param val Nanosecond.
-	 * @param inter Nanosecond.
+	 * @param value Nanosecond.
+	 * @param interval Nanosecond.
 	 */
-	bool SetTimer(size_t val, size_t inter);
+	bool SetTimer(size_t value, size_t interval);
 private:
 	bool Initialize();
 	void Uninitialize();
@@ -86,10 +86,10 @@ class CEventEx: public CEvent
 public:
 	CEventEx(CEventEngin*, CEvent*);
 	/**
-	 * @param val Millisecond.
-	 * @param inter Millisecond.
+	 * @param value Millisecond.
+	 * @param interval Millisecond.
 	 */
-	virtual bool SetTimer(size_t val, size_t inter) = 0;
+	virtual bool SetTimer(size_t value, size_t interval) = 0;
 	virtual void OnTimer() = 0;
 };
 
@@ -97,11 +97,11 @@ class CEventExImplement: public CEventEx
 {
 public:
 	CEventExImplement(CEventEngin*, CEvent*);
-	bool SetTimer(size_t val, size_t inter);
+	bool SetTimer(size_t value, size_t interval);
 	void OnRead();
 	void OnWrite();
 	void OnError();
-	void OnSubEvent(CEvent*, ErrorCode);
+	void OnSubEvent(const CEvent*, ErrorCode);
 	void OnTimer();
 private:
 	CTimer m_Timer;
@@ -113,10 +113,10 @@ public:
 	CEventEngin();
 	virtual ~CEventEngin();
 	bool Initialize(ssize_t affinity = -1);
-	bool AddPriority(CEvent *event);
-	bool Add(CEvent *event, int tag);
-	bool Mod(CEvent *event, int tag);
-	bool Del(CEvent *event);
+	bool AddPriority(CEvent*);
+	bool Add(CEvent*, int tag);
+	bool Mod(CEvent*, int tag);
+	bool Del(CEvent*);
 	bool Uninitialize();
 private:
 	void Thread();

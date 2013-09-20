@@ -16,7 +16,7 @@ public:
 	void* GetData(size_t &len);
 private:
 	const size_t m_Align;
-	void* m_Buf;
+	void *m_Buf;
 	size_t m_Len;
 	size_t m_Offset;
 	size_t m_Used;

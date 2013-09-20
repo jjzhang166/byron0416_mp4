@@ -50,7 +50,7 @@ public:
 	bool Stop();
 private:
 	virtual void Thread() = 0;
-	static void* __Thread(void *arg);
+	static void* __Thread(void*);
 private:
 	pthread_t m_Thread;
 	ssize_t m_Affinity;

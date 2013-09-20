@@ -4,7 +4,8 @@
 
 /** CBuffer */
 
-CBuffer::CBuffer(): m_Align(512), m_Buf(NULL), m_Len(0), m_Offset(0), m_Used(0)
+CBuffer::CBuffer():
+	m_Align(512), m_Buf(NULL), m_Len(0), m_Offset(0), m_Used(0)
 {
 }
 
@@ -23,7 +24,7 @@ bool CBuffer::Alloc(size_t len)
 	{
 		if(m_Len >= len)
 		{
-			memset(m_Buf, 0, m_Len);
+			memset(m_Buf, 0, len);
 
 			return true;
 		}
@@ -35,19 +36,18 @@ bool CBuffer::Alloc(size_t len)
 		}
 	}
 
-	int ret = posix_memalign(&m_Buf, m_Align, len);
-	if(ret!=0 || m_Buf==NULL)
-	{
-		LOG_FATAL("Failed to alloc memory for " << len << "/" << m_Align << " bytes.");
-
-		return false;
-	}
-	else
+	if(0 == posix_memalign(&m_Buf, m_Align, len))
 	{
 		m_Len = len;
 		memset(m_Buf, 0, m_Len);
 
 		return true;
+	}
+	else
+	{
+		LOG_FATAL("Failed to alloc memory for " << len << "/" << m_Align << " bytes.");
+
+		return false;
 	}
 }
 

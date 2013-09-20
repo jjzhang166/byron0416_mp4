@@ -23,7 +23,45 @@ bool CSocket::SetNonBlock()
 	}
 }
 
-bool CSocket::SetLinger(int time)
+
+/** CTcp */
+
+int CTcp::Attach(int fd)
+{
+	if(m_Fd <= 0)
+	{
+		if(fd > 0)
+			m_Fd = fd;
+		else
+		{
+			m_Fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+			if(m_Fd == -1)
+			{
+				LOG_ERROR("Create tcp socket failed(" << strerror(errno) << ").");
+
+				return -1;
+			}
+		}
+
+		if(true == SetNonBlock())
+			return m_Fd;
+		else
+		{
+			if(fd <= 0)
+				Close();
+
+			return -1;
+		}
+	}
+	else
+	{
+		LOG_ERROR("CTcp already have a valid fd " << m_Fd << ".");
+		assert(false);
+		return -1;
+	}
+}
+
+bool CTcp::SetLinger(int time)
 {
 	struct linger lin;
 
@@ -41,67 +79,14 @@ bool CSocket::SetLinger(int time)
 	}
 }
 
-bool CSocket::Connect(const string &ip, int port)
-{
-	if(m_Fd <= 0)
-		return false;
-
-	struct sockaddr_in addr = {0};
-
-	addr.sin_family      = AF_INET;
-	addr.sin_addr.s_addr = inet_addr(ip.c_str());
-	addr.sin_port        = htons(port);
-
-	if(connect(m_Fd, (struct sockaddr*)&addr, sizeof(struct sockaddr)) == -1)
-	{
-		if(errno != EINPROGRESS)
-		{
-			LOG_ERROR("Failed to connect " << ip << ":" << port << "(" << strerror(errno) << ").");
- 
-			return false;
-		}
-	}
- 
-	return true;
-}
-
-ssize_t CSocket::Send(const void *buf, size_t len)
+ssize_t CTcp::Send(const void *buf, size_t len)
 {
 	return send(m_Fd, buf, len, 0);
 }
 
-ssize_t CSocket::Recv(void *buf, size_t len)
+ssize_t CTcp::Recv(void *buf, size_t len)
 {
 	return recv(m_Fd, buf, len, 0);
-}
-
-
-/** CTcp */
-
-int CTcp::Attach(int fd)
-{
-	if(fd == -1)
-	{
-		m_Fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-		if(m_Fd == -1)
-		{
-			LOG_ERROR("Create tcp socket failed(" << strerror(errno) << ").");
-
-			return -1;
-		}
-	}
-	else
-		m_Fd = fd;
-
-	if(true == SetNonBlock())
-	{
-		if(true == SetLinger(0))
-			return m_Fd;
-	}
-
-	Close();
-
-	return -1;
 }
 
 
@@ -162,30 +147,26 @@ int CTcpServer::Accept()
 
 /** CTcpClient */
 
-
-/** CUdp */
-
-int CUdp::Attach(int fd)
+bool CTcpClient::Connect(const string &ip, int port)
 {
-	if(fd == -1)
-	{
-		m_Fd = socket(AF_INET, SOCK_DGRAM, 0);
-		if(m_Fd == -1)
-		{
-			LOG_ERROR("Create udp socket failed(" << strerror(errno) << ").");
+	if(-1 == Attach())
+		return false;
 
-			return -1;
+	struct sockaddr_in addr = {0};
+
+	addr.sin_family      = AF_INET;
+	addr.sin_addr.s_addr = inet_addr(ip.c_str());
+	addr.sin_port        = htons(port);
+
+	if(connect(m_Fd, (struct sockaddr*)&addr, sizeof(struct sockaddr)) == -1)
+	{
+		if(errno != EINPROGRESS)
+		{
+			LOG_ERROR("Failed to connect " << ip << ":" << port << "(" << strerror(errno) << ").");
+ 
+			return false;
 		}
 	}
-	else
-		m_Fd = fd;
-
-	if(true == SetNonBlock())
-	{
-		return m_Fd;
-	}
-
-	Close();
-
-	return -1;
+ 
+	return true;
 }

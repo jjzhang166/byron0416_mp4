@@ -221,7 +221,7 @@ void CRtspSession::Close()
 	m_Connect.Close();
 	m_Mp4.Teardown();
 
-	ReturnSubEvent(E_OK);
+	ReturnEvent(E_OK);
 }
 
 void CRtspSession::OnRead()

@@ -42,12 +42,12 @@ public:
 protected:
 	CLog *m_Log;
 	string m_Title;
-#define LOG_TRACE(msg) if(m_Log)LOG4CPLUS_TRACE(m_Log->GetLog(), "["  << typeid(*this).name() << "@" << this << "]" << "\t" << m_Title << msg);
-#define LOG_DEBUG(msg) if(m_Log)LOG4CPLUS_DEBUG(m_Log->GetLog(), "["  << typeid(*this).name() << "@" << this << "]" << "\t" << m_Title << msg);
-#define LOG_INFO(msg)  if(m_Log)LOG4CPLUS_INFO (m_Log->GetLog(), " [" << typeid(*this).name() << "@" << this << "]" << "\t" << m_Title << msg);
-#define LOG_WARN(msg)  if(m_Log)LOG4CPLUS_WARN (m_Log->GetLog(), " [" << typeid(*this).name() << "@" << this << "]" << "\t" << m_Title << msg);
-#define LOG_ERROR(msg) if(m_Log)LOG4CPLUS_ERROR(m_Log->GetLog(), "["  << typeid(*this).name() << "@" << this << "]" << "\t" << m_Title << msg);
-#define LOG_FATAL(msg) if(m_Log)LOG4CPLUS_FATAL(m_Log->GetLog(), "["  << typeid(*this).name() << "@" << this << "]" << "\t" << m_Title << msg);
+#define LOG_TRACE(msg) if(m_Log)LOG4CPLUS_TRACE(m_Log->GetLog(), "["  << typeid(*this).name() << "@" << this << "]" << "\t[" << m_Title << "] " << msg);
+#define LOG_DEBUG(msg) if(m_Log)LOG4CPLUS_DEBUG(m_Log->GetLog(), "["  << typeid(*this).name() << "@" << this << "]" << "\t[" << m_Title << "] " << msg);
+#define LOG_INFO(msg)  if(m_Log)LOG4CPLUS_INFO (m_Log->GetLog(), " [" << typeid(*this).name() << "@" << this << "]" << "\t[" << m_Title << "] " << msg);
+#define LOG_WARN(msg)  if(m_Log)LOG4CPLUS_WARN (m_Log->GetLog(), " [" << typeid(*this).name() << "@" << this << "]" << "\t[" << m_Title << "] " << msg);
+#define LOG_ERROR(msg) if(m_Log)LOG4CPLUS_ERROR(m_Log->GetLog(), "["  << typeid(*this).name() << "@" << this << "]" << "\t[" << m_Title << "] " << msg);
+#define LOG_FATAL(msg) if(m_Log)LOG4CPLUS_FATAL(m_Log->GetLog(), "["  << typeid(*this).name() << "@" << this << "]" << "\t[" << m_Title << "] " << msg);
 };
 
 
