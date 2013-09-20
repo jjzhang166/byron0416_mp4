@@ -32,7 +32,7 @@ ErrorCode CHttpRequest::Parse(const char *buf, size_t &len)
 
 	size_t pos = m_Request.find("\r\n\r\n");
 	if(pos != string::npos)
-		len -= pos+5-old;
+		len = pos+4-old;
 	else
 		return E_CONTINUE;
 

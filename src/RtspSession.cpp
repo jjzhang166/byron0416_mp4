@@ -13,7 +13,7 @@ size_t CRtspSession::m_Session = 0x1111111111111110;
 CMutex CRtspSession::m_Mutex;
 
 CRtspSession::CRtspSession(CEventEngin *engin, CEvent *pre):
-	CEventImplement(engin, pre), m_Mp4(engin, this)
+	CEventImplement(engin, pre), m_Mp4(engin, this), m_Type(0)
 {
 }
 
@@ -93,11 +93,6 @@ void CRtspSession::ProcessRequest()
 		value = "application/sdp";
 		m_Response.AddField(name, value);
 
-		//Base
-		name = "Content-Base";
-		value = "rtsp://192.168.0.101:8554/aaaa";
-		m_Response.AddField(name, value);
-
 		//Length
 		std::ostringstream o;
 		o << m_Body.size();
@@ -140,6 +135,15 @@ void CRtspSession::ProcessRequest()
 	else if(m_Request.GetMethod() == "PAUSE")
 	{
 		assert(false);
+	}
+	else if(m_Request.GetMethod() == "TEARDOWN")
+	{
+		m_Mp4.Teardown();
+
+		//Session
+		name = "Session";
+		m_Request.GetField(name, value);
+		m_Response.AddField(name, value);
 	}
 
 	m_Request.Initialize();
@@ -254,6 +258,7 @@ void CRtspSession::OnRead()
 
 					if(code == E_OK)
 					{
+						m_Type = 0;
 						LOG_INFO("Get a rtsp request: " << m_Request.GetRequest());
 						ProcessRequest();
 						continue;
@@ -272,7 +277,10 @@ void CRtspSession::OnRead()
 					buf += n;
 
 					if(code == E_OK)
+					{
+						m_Type = 0;
 						continue;
+					}
 					else if(code == E_CONTINUE)
 						break; 
 					else

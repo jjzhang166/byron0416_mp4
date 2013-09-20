@@ -11,7 +11,7 @@ using std::ostringstream;
 CMutex CEngin::m_Mutex;
 
 CEngin::CEngin():
-	CEventExImplement(&m_Engin, NULL), m_SessionCount(100)
+	CEventExImplement(&m_Engin, NULL), m_SessionCount(30)
 {
 	m_Free = m_SessionCount;
 	m_Done = 0;
@@ -28,7 +28,6 @@ CEngin::~CEngin()
 		delete *iter;
 
 	m_Engin.Uninitialize();
-
 	m_Listener.Detach(); //Void to close fd of listener.
 }
 
