@@ -112,7 +112,7 @@ bool CMp4Demuxer::GetRtpSample(size_t id, CRtpSample &rtp)
 			UInt16 count=0;
 			UInt16 reserved = 0;
 
-			LOG_TRACE("Get rtp sample from track-" << id << ": st/" << sample.m_Timestamp << " dur/" << sample.m_Duration << " offset/" << sample.m_Offset << " len/" << sample.m_Len << ".");
+			//LOG_TRACE("Get rtp sample from track-" << id << ": st/" << sample.m_Timestamp << " dur/" << sample.m_Duration << " offset/" << sample.m_Offset << " len/" << sample.m_Len << ".");
 
 			rtp.m_Timestamp = sample.m_Timestamp * 1000 / trk.m_Timescale;
 
@@ -122,7 +122,7 @@ bool CMp4Demuxer::GetRtpSample(size_t id, CRtpSample &rtp)
 				return false;
 			if(false == Read16BE(reserved))
 				return false;
-			LOG_TRACE(" This sample have " << count << " rtp packets.");
+			//LOG_TRACE(" This sample have " << count << " rtp packets.");
 
 			for(size_t i=0; i<count; i++)
 			{
@@ -134,7 +134,7 @@ bool CMp4Demuxer::GetRtpSample(size_t id, CRtpSample &rtp)
 				if(sizeof(CPacketEntry) != read(m_Fd, &entry, sizeof(CPacketEntry)))
 					return false;
 				entry.m_Count = ntohs(entry.m_Count);
-				LOG_TRACE("  This packet have " << entry.m_Count << " entries.");
+				//LOG_TRACE("  This packet have " << entry.m_Count << " entries.");
 
 				if(entry.m_Header[0] != 0x80)
 				{
@@ -149,7 +149,7 @@ bool CMp4Demuxer::GetRtpSample(size_t id, CRtpSample &rtp)
 						return false;
 					if(-1 == lseek(m_Fd, len-4, SEEK_CUR))
 						return false;
-					LOG_DEBUG("This packet have " << len << " bytes extra data.");
+					//LOG_TRACE("This packet have " << len << " bytes extra data.");
 				}
 
 				// Copy rtp header
@@ -169,7 +169,7 @@ bool CMp4Demuxer::GetRtpSample(size_t id, CRtpSample &rtp)
 
 					if(1 != read(m_Fd, &type, 1))
 						return false;
-					LOG_TRACE("   The type of this entry is " << int(type) << ".");
+					//LOG_TRACE("   The type of this entry is " << int(type) << ".");
 
 					if(type == 0)
 					{
@@ -187,7 +187,7 @@ bool CMp4Demuxer::GetRtpSample(size_t id, CRtpSample &rtp)
 						offset += cn;
 						if(14-cn != read(m_Fd, pad, 14-cn))
 							return false;
-						LOG_TRACE("    Copy " << int(cn) << " bytes.");
+						//LOG_TRACE("    Copy " << int(cn) << " bytes.");
 					}
 					else if(type == 2)
 					{
@@ -220,7 +220,7 @@ bool CMp4Demuxer::GetRtpSample(size_t id, CRtpSample &rtp)
 						if(len != pread(m_Fd, data+offset, len, off))
 							return false;
 						offset += len;
-						LOG_TRACE("    Copy " << len << " bytes form sample " << num-1 << " with offset " << off << " in track " << int(index) << ".");
+						//LOG_TRACE("    Copy " << len << " bytes form sample " << num-1 << " with offset " << off << " in track " << int(index) << ".");
 					}
 					else if(type == 3)
 					{
@@ -489,7 +489,7 @@ bool CMp4Demuxer::ParseFtyp(Atom atom, CTrack *track)
 	{
 		if(brand == MKTYPE('m', 'p', '4', '2'))
 		{
-			LOG_DEBUG("Major brand mp42.");
+			LOG_DEBUG("\tMajor brand mp42.");
 
 			return true;
 		}
@@ -542,7 +542,7 @@ bool CMp4Demuxer::ParseTrak(Atom atom, CTrack *track)
 		}
 
 		trk.m_Samples.push_back(sample);
-		LOG_TRACE("Find sample " << i << ": st/" << sample.m_Timestamp << " dur/" << sample.m_Duration << " offset/" << sample.m_Offset << " len/" << sample.m_Len);
+		//LOG_TRACE("Find sample " << i << ": st/" << sample.m_Timestamp << " dur/" << sample.m_Duration << " offset/" << sample.m_Offset << " len/" << sample.m_Len);
 	}
 
 	m_Tracks.insert(std::pair<size_t, CTrack>(trk.m_ID, trk));
@@ -578,7 +578,7 @@ bool CMp4Demuxer::ParseTkhd(Atom atom, CTrack *track)
 
 	if(true == Read32BE(track->m_ID))
 	{
-		LOG_DEBUG("Get track with id " << track->m_ID << ".");
+		LOG_DEBUG("\tGet track with id " << track->m_ID << ".");
 	}
 	else
 		return false;
@@ -614,7 +614,7 @@ bool CMp4Demuxer::ParseMdhd(Atom atom, CTrack *track)
 
 	if(true == Read32BE(track->m_Timescale))
 	{
-		LOG_DEBUG("Get timescale " << track->m_Timescale << ".");
+		LOG_DEBUG("\tGet timescale " << track->m_Timescale << ".");
 	}
 	else
 		return false;
@@ -634,7 +634,7 @@ bool CMp4Demuxer::ParseHdlr(Atom atom, CTrack *track)
 	if(4 != read(m_Fd, &track->m_Type, 4))
 		return false;
 
-	LOG_DEBUG("Track for " << PRTYPE(track->m_Type));
+	LOG_DEBUG("\tTrack for " << PRTYPE(track->m_Type));
 
 	return true;
 }
@@ -660,7 +660,7 @@ bool CMp4Demuxer::ParseStts(Atom atom, CTrack *track)
 				return false;
 			if(false == Read32BE(delta))
 				return false;
-			LOG_TRACE("\tSTTS: " << n << " samples with the same delta " << delta << ".");
+			//LOG_TRACE("\tSTTS: " << n << " samples with the same delta " << delta << ".");
 
 			/** Save information */
 			for(UInt32 j=0; j<n; j++)
@@ -698,7 +698,7 @@ bool CMp4Demuxer::ParseStsz(Atom atom, CTrack *track)
 		{
 			if(false == Read32BE(size))
 				return false;
-			LOG_TRACE("\tSTSZ: Sample " << i << " with size " << size << ".");
+			//LOG_TRACE("\tSTSZ: Sample " << i << " with size " << size << ".");
 
 			track->m_SampleSize.push_back(size);
 		}
@@ -729,7 +729,7 @@ bool CMp4Demuxer::ParseStsc(Atom atom, CTrack *track)
 			return false;
 		if(false == Read32BE(sampleDescriptionIndex))
 			return false;
-		LOG_TRACE("\tSTSC: first " << firstChunk << ", per " << samplesPerChunk << ", index " << sampleDescriptionIndex << ".");
+		//LOG_TRACE("\tSTSC: first " << firstChunk << ", per " << samplesPerChunk << ", index " << sampleDescriptionIndex << ".");
 
 		if(track->m_ChunkCapacity.empty() == true)
 			track->m_ChunkCapacity.push_back(samplesPerChunk);
@@ -766,7 +766,7 @@ bool CMp4Demuxer::ParseStco(Atom atom, CTrack *track)
 		if(false == Read32BE(offset))
 			return false;
 
-		LOG_TRACE("\tSTCO: Chunk " << i+1 << " with offset " << offset << ".");
+		//LOG_TRACE("\tSTCO: Chunk " << i+1 << " with offset " << offset << ".");
 
 		track->m_ChunkOffset.push_back(offset);
 	}
@@ -790,7 +790,7 @@ bool CMp4Demuxer::ParseStss(Atom atom, CTrack *track)
 
 		if(false == Read32BE(num))
 			return false;
-		LOG_TRACE("\tSTSS: There is a I Frame with sample number " << num << ".");
+		//LOG_TRACE("\tSTSS: There is a I Frame with sample number " << num << ".");
 	}
 
 	return true;
@@ -800,7 +800,7 @@ bool CMp4Demuxer::ParseHint(Atom atom, CTrack *track)
 {
 	if(false == Read32BE(track->m_Refer))
 		return false;
-	LOG_DEBUG("Find a hint track for track " << track->m_Refer << ".");
+	LOG_DEBUG("\tFind a hint track for track " << track->m_Refer << ".");
 
 	return true;
 }

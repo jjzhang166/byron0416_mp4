@@ -105,7 +105,7 @@ void CMp4Player::OnTimer()
 					m_Rtsp.Send(num, 2);
 					m_Rtsp.Send(&len, 2);
 					ssize_t ret = m_Rtsp.Send(packets[i].m_Packet, packets[i].m_Len);
-					LOG_TRACE("Send a rtp packet with " << packets[i].m_Len << "/" << ret << " bytes.");
+					//LOG_TRACE("Send a rtp packet with " << packets[i].m_Len << "/" << ret << " bytes.");
 				}
 				packets.clear();
 				if(false == m_Mp4.GetRtpSample(iter->first, sample))
