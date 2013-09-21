@@ -245,6 +245,19 @@ bool CUdpServer::Bind(int port, const string &ip)
 		return false;
 	}
 
+	if(ntohl(addr.sin_addr.s_addr) > 0xe0000000)
+	{
+		struct ip_mreq mreq;
+		mreq.imr_multiaddr.s_addr = inet_addr(ip.c_str());
+		mreq.imr_interface.s_addr = INADDR_ANY;
+		if(-1 == setsockopt(m_Fd, IPPROTO_IP, IP_ADD_MEMBERSHIP,(char*)&mreq, sizeof(mreq)))
+		{
+			LOG_ERROR("Call setsockopt(IP_ADD_MEMBERSHIP) failed(" << strerror(errno) << ").");
+			Close();
+			return false;
+		}
+	}
+
 	return true;
 }
 

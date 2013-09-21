@@ -13,7 +13,7 @@ size_t CRtspSession::m_Session = 0x1111111111111110;
 CMutex CRtspSession::m_Mutex;
 
 CRtspSession::CRtspSession(CEventEngin *engin, CEvent *pre):
-	CEventImplement(engin, pre), m_Mp4(engin, this), m_Type(0)
+	CEventImplement(engin, pre), m_Mp4(engin, this), m_Live(engin, this), m_Type(0)
 {
 }
 
@@ -51,6 +51,7 @@ string CRtspSession::GetSessionID()
 void CRtspSession::ProcessRequest()
 {
 	string name, value;
+	ErrorCode ret;
 
 	m_Response.Initialize();
 	m_HeaderSended = 0;
@@ -86,7 +87,7 @@ void CRtspSession::ProcessRequest()
 	}
 	else if(m_Request.GetMethod() == "DESCRIBE")
 	{
-		OnDescribe();
+		ret = OnDescribe();
 
 		//Type
 		name = "Content-Type";
@@ -102,7 +103,7 @@ void CRtspSession::ProcessRequest()
 	}
 	else if(m_Request.GetMethod() == "SETUP")
 	{
-		OnSetup();
+		ret = OnSetup();
 
 		//Session
 		name = "Session";
@@ -118,7 +119,7 @@ void CRtspSession::ProcessRequest()
 	}
 	else if(m_Request.GetMethod() == "PLAY")
 	{
-		OnPlay();
+		ret = OnPlay();
 
 		//Session
 		name = "Session";
@@ -134,11 +135,12 @@ void CRtspSession::ProcessRequest()
 	}
 	else if(m_Request.GetMethod() == "PAUSE")
 	{
-		assert(false);
+		//assert(false);
 	}
 	else if(m_Request.GetMethod() == "TEARDOWN")
 	{
-		m_Mp4.Teardown();
+		if(m_Player)
+			m_Player->Teardown();
 
 		//Session
 		name = "Session";
@@ -148,19 +150,27 @@ void CRtspSession::ProcessRequest()
 
 	m_Request.Initialize();
 
-	m_Response.Response("RTSP/1.0", E_OK);
+	m_Response.Response("RTSP/1.0", ret);
 	RegisterWR();
 }
 
-void CRtspSession::OnDescribe()
+ErrorCode CRtspSession::OnDescribe()
 {
 	vector<size_t> ids;
 
-	m_Mp4.Setup(m_Request.GetFile());
-	m_Body = m_Mp4.GetSdp();
+	if(true == m_Live.Setup(m_Request.GetFile()))
+		m_Player = &m_Live;
+	else if(true == m_Mp4.Setup(m_Request.GetFile()))
+		m_Player = &m_Mp4;
+	else
+		return E_NOTFOUND;
+
+	m_Body = m_Player->GetSdp();
+
+	return E_OK;
 }
 
-bool CRtspSession::OnSetup()
+ErrorCode CRtspSession::OnSetup()
 {
 	size_t id;
 
@@ -187,21 +197,24 @@ bool CRtspSession::OnSetup()
 			{
 				istringstream num(transport.substr(pos+12, string::npos));
 				num >> interleaved;
-				m_Mp4.SetInterleaved(id, interleaved);
+				m_Player->SetInterleaved(id, interleaved);
 			}
 			else
-				return false;
+				return E_UNSUPPORTEDTRANSPORT;
 		}
 
-		return true;
+		return E_OK;
 	}
 	else
-		return false;
+		return E_UNSUPPORTEDTRANSPORT;
 }
 
-void CRtspSession::OnPlay()
+ErrorCode CRtspSession::OnPlay()
 {
-	assert(m_Mp4.Play(GetFd()));
+	if(true == m_Player->Play(GetFd()))
+		return E_OK;
+	else
+		return E_ERROR;
 }
 
 void CRtspSession::SendError(ErrorCode)
@@ -213,7 +226,8 @@ void CRtspSession::Close()
 {
 	Unregister();
 	m_Connect.Close();
-	m_Mp4.Teardown();
+	if(m_Player)
+		m_Player->Teardown();
 
 	ReturnEvent(E_OK);
 }

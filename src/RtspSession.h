@@ -20,9 +20,9 @@ public:
 private:
 	string GetSessionID();
 	void ProcessRequest();
-	void OnDescribe();
-	bool OnSetup();
-	void OnPlay();
+	ErrorCode OnDescribe();
+	ErrorCode OnSetup();
+	ErrorCode OnPlay();
 	void SendError(ErrorCode);
 	void Close();
 	/** CEventImplement */
@@ -35,8 +35,9 @@ private:
 	CHttpRequest m_Request;
 	CHttpResponse m_Response;
 	CRtcp m_Rtcp;
-	//CMp4Player m_Mp4;
-	CLivePlayer m_Mp4;
+	CMp4Player m_Mp4;
+	CLivePlayer m_Live;
+	CRtpPlayer *m_Player;
 	size_t m_Type; //RTSP=1 or RTCP=2
 	size_t m_HeaderSended;
 	string m_Body;
