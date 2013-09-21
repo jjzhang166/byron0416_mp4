@@ -20,7 +20,7 @@ bool CChannelTrack::Run(size_t port)
 	if(false == m_Client.Connect("239.9.9.9", port))
 		return false;
 
-	if(true == m_Server.Bind(port, "192.168.0.100"))
+	if(true == m_Server.Bind(port, CLiveChannels::GetIP()))
 	{
 		if(true == RegisterRD())
 			return true;

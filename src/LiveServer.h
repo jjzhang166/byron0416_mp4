@@ -50,6 +50,7 @@ class CLiveChannels: public CLogger
 public:
 	static void SetPath(const string &path) {m_Path = path;}
 	static void SetIP(const string &ip) {m_IP = ip;}
+	static string GetIP() {return m_IP;}
 	static CLiveChannels* GetInstance();
 	bool Initialize();
 	string GetSdp(const string&);
