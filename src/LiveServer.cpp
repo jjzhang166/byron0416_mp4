@@ -10,6 +10,7 @@ using namespace std;
 bool CLiveServer::Run(const string &path)
 {
 	dirent *ent;
+	string live = path.substr(path.rfind("/")+1, string::npos);
 
 	/** dark_372_18006_18007.sdp */
 	DIR *dir = opendir(path.c_str());
@@ -21,7 +22,7 @@ bool CLiveServer::Run(const string &path)
 
 			if(name.find(".sdp") != string::npos)
 			{
-				if(name != path+".sdp")
+				if(name != live+".sdp")
 				{
 					Parse(path+"/"+name);
 					break;
@@ -30,11 +31,12 @@ bool CLiveServer::Run(const string &path)
 		}
 		closedir(dir);
 	}
+	else
 		return false;
 
 	/** dark_372.sdp */
 	struct stat st;
-	string name = path+"/"+path+".sdp";
+	string name = path+"/"+live+".sdp";
 	if(0 == stat(name.c_str(), &st))
 	{
 		ostringstream out;
