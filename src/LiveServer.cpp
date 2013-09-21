@@ -7,14 +7,14 @@
 
 using namespace std;
 
-/** CLiveTrack */
+/** CChannelTrack */
 
-CLiveTrack::CLiveTrack(CEventEngin *engin):
+CChannelTrack::CChannelTrack(CEventEngin *engin):
 	CEventImplement(engin, NULL)
 {
 }
 
-bool CLiveTrack::Run(size_t port)
+bool CChannelTrack::Run(size_t port)
 {
 	if(false == m_Client.Connect("239.9.9.9", port))
 		return false;
@@ -30,7 +30,7 @@ bool CLiveTrack::Run(size_t port)
 		return false;
 }
 
-bool CLiveTrack::Stop()
+bool CChannelTrack::Stop()
 {
 	Unregister();
 	m_Server.Close();
@@ -39,14 +39,13 @@ bool CLiveTrack::Stop()
 	return true;
 }
 
-void CLiveTrack::OnRead()
+void CChannelTrack::OnRead()
 {
 	const size_t LEN = 1500;
 	char BUF[LEN] = {0};
 
 	size_t len = m_Server.Recv(BUF, LEN);
 	len = m_Client.Send(BUF, len);
-	LOG_DEBUG("Get a udp packet with " << len);
 }
 
 
@@ -171,7 +170,7 @@ bool CLiveChannel::Parse(const string &file)
 
 		if(id!=0 && port!=0)
 		{
-			CLiveTrack *track = new CLiveTrack(&m_Engin);
+			CChannelTrack *track = new CChannelTrack(&m_Engin);
 			if(true == track->Run(port))
 			{
 				m_Tracks.push_back(track);
@@ -211,7 +210,7 @@ bool CLiveChannels::Initialize(const string &path)
 				string name = path + ent->d_name;
 				if(channel->Run(name) == true)
 				{
-					m_Channels.insert(pair<string, CLiveChannel*>(name, channel));
+					m_Channels.insert(pair<string, CLiveChannel*>(string(ent->d_name)+".sdp", channel));
 				}
 				else
 				{

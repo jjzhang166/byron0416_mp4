@@ -10,10 +10,10 @@
 
 using std::map;
 
-class CTrack: public CEventImplement
+class CLiveTrack: public CEventImplement
 {
 public:
-	CTrack(CEventEngin*);
+	CLiveTrack(CEventEngin*);
 	bool SetFd(int fd) {return m_Rtsp.Attach(fd);}
 	void SetPort(size_t port) {m_Port = port;}
 	void SetID(size_t id) {m_ID = id;}
@@ -51,7 +51,7 @@ private:
 	string m_Name;
 	string m_Sdp;
 	map<size_t, size_t> m_Interleaved;
-	vector<CTrack> m_Tracks;
+	vector<CLiveTrack> m_Tracks;
 };
 
 

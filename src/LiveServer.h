@@ -11,10 +11,10 @@
 using std::map;
 using std::list;
 
-class CLiveTrack: public CEventImplement
+class CChannelTrack: public CEventImplement
 {
 public:
-	CLiveTrack(CEventEngin*);
+	CChannelTrack(CEventEngin*);
 	bool Run(size_t);
 	bool Stop();
 private:
@@ -42,7 +42,7 @@ private:
 	CEventEngin m_Engin;
 	string m_Sdp;
 	map<size_t, size_t> m_TrackID; // track id, port
-	vector<CLiveTrack*> m_Tracks;
+	vector<CChannelTrack*> m_Tracks;
 };
 
 class CLiveChannels: public CLogger

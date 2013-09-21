@@ -3,14 +3,14 @@
 #include "LivePlayer.h"
 
 
-/** CTrack */
+/** CLiveTrack */
 
-CTrack::CTrack(CEventEngin *engin):
+CLiveTrack::CLiveTrack(CEventEngin *engin):
 	CEventImplement(engin, NULL), m_Port(0), m_ID(0), m_Interleaved(0)
 {
 }
 
-bool CTrack::Run()
+bool CLiveTrack::Run()
 {
 	if(true == m_Server.Bind(m_Port))
 		return RegisterRD();
@@ -18,13 +18,13 @@ bool CTrack::Run()
 		return false;
 }
 
-void CTrack::Stop()
+void CLiveTrack::Stop()
 {
 	Unregister();
 	m_Server.Close();
 }
 
-void CTrack::OnRead()
+void CLiveTrack::OnRead()
 {
 	const size_t LEN = 1500;
 	char BUF[LEN+1];
@@ -43,7 +43,7 @@ void CTrack::OnRead()
 CLivePlayer::CLivePlayer(CEventEngin *engin, CEvent *pre):
 	CEventImplement(engin, pre)
 {
-	CTrack track(m_Engin);
+	CLiveTrack track(m_Engin);
 
 	m_Tracks.push_back(track);
 	m_Tracks.push_back(track);
