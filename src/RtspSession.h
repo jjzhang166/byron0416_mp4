@@ -7,6 +7,7 @@
 #include "Http.h"
 #include "Rtcp.h"
 #include "Mp4Player.h"
+#include "LivePlayer.h"
 
 
 class CRtspSession: public CEventImplement
@@ -34,7 +35,8 @@ private:
 	CHttpRequest m_Request;
 	CHttpResponse m_Response;
 	CRtcp m_Rtcp;
-	CMp4Player m_Mp4;
+	//CMp4Player m_Mp4;
+	CLivePlayer m_Mp4;
 	size_t m_Type; //RTSP=1 or RTCP=2
 	size_t m_HeaderSended;
 	string m_Body;
