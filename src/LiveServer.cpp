@@ -208,9 +208,10 @@ bool CLiveChannels::Initialize(const string &path)
 			if(DT_DIR == ent->d_type)
 			{
 				CLiveChannel *channel = new CLiveChannel();
-				if(channel->Run(path+ent->d_name) == true)
+				string name = path + ent->d_name;
+				if(channel->Run(name) == true)
 				{
-					m_Channels.push_back(channel);
+					m_Channels.insert(pair<string, CLiveChannel*>(name, channel));
 				}
 				else
 				{
@@ -227,13 +228,43 @@ bool CLiveChannels::Initialize(const string &path)
 		return false;
 }
 
+string CLiveChannels::GetSdp(const string &name)
+{
+	map<string, CLiveChannel*>::iterator iter = m_Channels.find(name);
+
+	if(iter != m_Channels.end())
+		return iter->second->GetSdp();
+	else
+		return "";
+}
+
+bool CLiveChannels::GetTrackID(const string &name, vector<size_t> &ids)
+{
+	map<string, CLiveChannel*>::iterator iter = m_Channels.find(name);
+
+	if(iter != m_Channels.end())
+		return iter->second->GetTrackID(ids);
+	else
+		return false; 
+}
+
+size_t CLiveChannels::GetPort(const string &name, size_t id)
+{
+	map<string, CLiveChannel*>::iterator iter = m_Channels.find(name);
+
+	if(iter != m_Channels.end())
+		return iter->second->GetPort(id);
+	else
+		return 0; 
+}
+
 void CLiveChannels::Uninitialize()
 {
-	list<CLiveChannel*>::iterator iter;
+	map<string, CLiveChannel*>::iterator iter;
 	for(iter=m_Channels.begin(); iter!=m_Channels.end(); iter++)
 	{
-		(*iter)->Stop();
-		delete (*iter);
+		iter->second->Stop();
+		delete iter->second;
 	}
 	m_Channels.clear();
 }

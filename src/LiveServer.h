@@ -50,12 +50,15 @@ class CLiveChannels: public CLogger
 public:
 	static CLiveChannels* GetInstance();
 	bool Initialize(const string&);
+	string GetSdp(const string&);
+	bool GetTrackID(const string&, vector<size_t>&);
+	size_t GetPort(const string&, size_t);
 	void Uninitialize();
 private:
 	CLiveChannels();
 	~CLiveChannels();
 private:
-	list<CLiveChannel*> m_Channels;
+	map<string, CLiveChannel*> m_Channels;
 };
 
 
