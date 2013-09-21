@@ -30,6 +30,7 @@ void CLiveTrack::OnRead()
 	char BUF[LEN+1];
 
 	ssize_t len = m_Server.Recv(BUF, LEN);
+	//LOG_ERROR("Get a udp packet with bytess " << len << " " << size_t(m_Interleaved));
 	char num[2] = {0x24, m_Interleaved}; //$
 	uint16_t l = htons(len);
 	m_Rtsp.Send(num, 2);

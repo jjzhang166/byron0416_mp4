@@ -228,6 +228,15 @@ bool CUdpServer::Bind(int port, const string &ip)
 	else
 		addr.sin_addr.s_addr = inet_addr(ip.c_str());
 
+	int reuse = 1;
+	if(-1 == setsockopt(m_Fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)))
+	{
+		LOG_ERROR("Call setsockopt(SO_REUSEADDR) failed(" << strerror(errno) << ").");
+		Close();
+
+		return false;
+	}
+
 	if(bind(m_Fd, (struct sockaddr*)&addr, sizeof(struct sockaddr)) == -1)
 	{
 		LOG_ERROR("Failed to bind " << ip << ":" << port << "(" << strerror(errno) << ").");
