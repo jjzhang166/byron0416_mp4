@@ -3,11 +3,13 @@
 
 
 #include <map>
+#include <list>
 #include "Event.h"
 #include "Socket.h"
 
 
 using std::map;
+using std::list;
 
 class CLiveTrack: public CEventImplement
 {
@@ -23,7 +25,7 @@ private:
 	CUdpClient m_Client;
 };
 
-class CLiveServer
+class CLiveChannel
 {
 public:
 	/**
@@ -41,6 +43,19 @@ private:
 	string m_Sdp;
 	map<size_t, size_t> m_TrackID; // track id, port
 	vector<CLiveTrack*> m_Tracks;
+};
+
+class CLiveChannels: public CLogger
+{
+public:
+	static CLiveChannels* GetInstance();
+	bool Initialize(const string&);
+	void Uninitialize();
+private:
+	CLiveChannels();
+	~CLiveChannels();
+private:
+	list<CLiveChannel*> m_Channels;
 };
 
 

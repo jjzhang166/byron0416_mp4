@@ -45,14 +45,14 @@ void CLiveTrack::OnRead()
 	char BUF[LEN] = {0};
 
 	size_t len = m_Server.Recv(BUF, LEN);
+	len = m_Client.Send(BUF, len);
 	LOG_DEBUG("Get a udp packet with " << len);
-	m_Client.Send(BUF, len);
 }
 
 
-/** CLiveServer */
+/** CLiveChannel */
 
-bool CLiveServer::Run(const string &path)
+bool CLiveChannel::Run(const string &path)
 {
 	if(false == m_Engin.Initialize())
 		return false;
@@ -92,11 +92,13 @@ bool CLiveServer::Run(const string &path)
 		out << sdp.rdbuf();
 		m_Sdp = out.str();
 	}
+	else
+		return false;
 
 	return true;
 }
 
-bool CLiveServer::GetTrackID(vector<size_t> &ids)
+bool CLiveChannel::GetTrackID(vector<size_t> &ids)
 {
 	map<size_t, size_t>::iterator iter;
 
@@ -106,7 +108,7 @@ bool CLiveServer::GetTrackID(vector<size_t> &ids)
 	return true;
 }
 
-size_t CLiveServer::GetPort(size_t id)
+size_t CLiveChannel::GetPort(size_t id)
 {
 	map<size_t, size_t>::iterator iter = m_TrackID.find(id);
 
@@ -116,7 +118,7 @@ size_t CLiveServer::GetPort(size_t id)
 		return 0;
 }
 
-void CLiveServer::Stop()
+void CLiveChannel::Stop()
 {
 	m_Engin.Stop();
 
@@ -132,7 +134,7 @@ void CLiveServer::Stop()
 	m_Engin.Uninitialize();
 }
 
-bool CLiveServer::Parse(const string &file)
+bool CLiveChannel::Parse(const string &file)
 {
 	fstream sdp(file.c_str(), ios::in);
 	size_t id = 0;
@@ -182,4 +184,64 @@ bool CLiveServer::Parse(const string &file)
 	}
 
 	return true;
+}
+
+
+/** CLiveChannels */
+
+CLiveChannels* CLiveChannels::GetInstance()
+{
+	static CLiveChannels s_Channels;
+
+	return &s_Channels;
+}
+
+bool CLiveChannels::Initialize(const string &path)
+{
+	dirent *ent;
+
+	DIR *dir = opendir(path.c_str());
+	if(dir != NULL)
+	{
+		while(NULL != (ent = readdir(dir)))
+		{
+			if(DT_DIR == ent->d_type)
+			{
+				CLiveChannel *channel = new CLiveChannel();
+				if(channel->Run(path+ent->d_name) == true)
+				{
+					m_Channels.push_back(channel);
+				}
+				else
+				{
+					channel->Stop();
+					delete channel;
+				}
+			}
+		}
+		closedir(dir);
+
+		return true;
+	}
+	else
+		return false;
+}
+
+void CLiveChannels::Uninitialize()
+{
+	list<CLiveChannel*>::iterator iter;
+	for(iter=m_Channels.begin(); iter!=m_Channels.end(); iter++)
+	{
+		(*iter)->Stop();
+		delete (*iter);
+	}
+	m_Channels.clear();
+}
+
+CLiveChannels::CLiveChannels()
+{
+}
+
+CLiveChannels::~CLiveChannels()
+{
 }
