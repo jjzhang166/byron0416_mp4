@@ -7,8 +7,56 @@
 
 using namespace std;
 
+/** CLiveTrack */
+
+CLiveTrack::CLiveTrack(CEventEngin *engin):
+	CEventImplement(engin, NULL)
+{
+}
+
+bool CLiveTrack::Run(size_t port)
+{
+	if(false == m_Client.Connect("239.9.9.9", port))
+		return false;
+
+	if(true == m_Server.Bind(port))
+	{
+		if(true == RegisterRD())
+			return true;
+		else
+			return false;
+	}
+	else
+		return false;
+}
+
+bool CLiveTrack::Stop()
+{
+	Unregister();
+	m_Server.Close();
+	m_Client.Close();
+
+	return true;
+}
+
+void CLiveTrack::OnRead()
+{
+	const size_t LEN = 1500;
+	char BUF[LEN] = {0};
+
+	size_t len = m_Server.Recv(BUF, LEN);
+	LOG_DEBUG("Get a udp packet with " << len);
+	m_Client.Send(BUF, len);
+}
+
+
+/** CLiveServer */
+
 bool CLiveServer::Run(const string &path)
 {
+	if(false == m_Engin.Initialize())
+		return false;
+
 	dirent *ent;
 	string live = path.substr(path.rfind("/")+1, string::npos);
 
@@ -52,7 +100,7 @@ bool CLiveServer::GetTrackID(vector<size_t> &ids)
 {
 	map<size_t, size_t>::iterator iter;
 
-	for(iter=m_Tracks.begin(); iter!=m_Tracks.end(); iter++)
+	for(iter=m_TrackID.begin(); iter!=m_TrackID.end(); iter++)
 		ids.push_back(iter->first);
 
 	return true;
@@ -60,12 +108,28 @@ bool CLiveServer::GetTrackID(vector<size_t> &ids)
 
 size_t CLiveServer::GetPort(size_t id)
 {
-	map<size_t, size_t>::iterator iter = m_Tracks.find(id);
+	map<size_t, size_t>::iterator iter = m_TrackID.find(id);
 
-	if(iter != m_Tracks.end())
+	if(iter != m_TrackID.end())
 		return iter->second;
 	else
 		return 0;
+}
+
+void CLiveServer::Stop()
+{
+	m_Engin.Stop();
+
+	m_Sdp = "";
+	m_TrackID.clear();
+	for(size_t i=0; i<m_Tracks.size(); i++)
+	{
+		m_Tracks[i]->Stop();
+		delete m_Tracks[i];
+	}
+	m_Tracks.clear();
+
+	m_Engin.Uninitialize();
 }
 
 bool CLiveServer::Parse(const string &file)
@@ -105,8 +169,15 @@ bool CLiveServer::Parse(const string &file)
 
 		if(id!=0 && port!=0)
 		{
-			m_Tracks.insert(pair<size_t, size_t>(id, port));
-			id = port = 0;
+			CLiveTrack *track = new CLiveTrack(&m_Engin);
+			if(true == track->Run(port))
+			{
+				m_Tracks.push_back(track);
+				m_TrackID.insert(pair<size_t, size_t>(id, port));
+				id = port = 0;
+			}
+			else
+				return false;
 		}
 	}
 

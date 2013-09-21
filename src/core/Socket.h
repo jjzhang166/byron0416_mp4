@@ -15,6 +15,8 @@ public:
 	virtual void Detach() {m_Fd = -1;}
 	int GetFd() {return m_Fd;}
 	bool SetNonBlock();
+	ssize_t Send(const void *buf, size_t len);
+	ssize_t Recv(void *buf, size_t len);
 	void Close()
 	{
 		if(m_Fd > 0)
@@ -32,8 +34,6 @@ class CTcp: public CSocket
 public:
 	int Attach(int fd = -1);
 	bool SetLinger(int);
-	ssize_t Send(const void *buf, size_t len);
-	ssize_t Recv(void *buf, size_t len);
 };
 
 class CTcpServer: public CTcp
@@ -44,6 +44,24 @@ public:
 };
 
 class CTcpClient: public CTcp
+{
+public:
+	bool Connect(const string &ip, int port);
+};
+
+class CUdp: public CSocket
+{
+public:
+	int Attach(int fd = -1);
+};
+
+class CUdpServer: public CUdp
+{
+public:
+	bool Bind(int port, const string &ip="");
+};
+
+class CUdpClient: public CUdp
 {
 public:
 	bool Connect(const string &ip, int port);
