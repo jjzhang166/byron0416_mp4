@@ -25,11 +25,16 @@ bool CMp4Player::GetTrackID(vector<size_t> &ids)
 		return true;
 }
 
-bool CMp4Player::GetSdp(size_t id, string &sdp)
+string CMp4Player::GetSdp()
 {
-	sdp = m_Mp4.GetSdp(id);
+	string sdp;
+	vector<size_t> ids;
 
-	return true;
+	m_Mp4.GetTrackID(ids);
+	for(size_t i=0; i<ids.size(); i++)
+		sdp += m_Mp4.GetSdp(ids[i]);
+
+	return sdp;
 }
 
 bool CMp4Player::SetInterleaved(size_t id, size_t interleaved)

@@ -40,7 +40,7 @@ public:
 	virtual ~CRtpPlayer() = 0;
 	virtual bool Setup(const string&) = 0;
 	virtual bool GetTrackID(vector<size_t>&) = 0;
-	virtual bool GetSdp(size_t, string&) = 0;
+	virtual string GetSdp() = 0;
 	virtual bool SetInterleaved(size_t, size_t) = 0;
 	virtual bool Play(int) = 0;
 	virtual void Teardown() = 0;

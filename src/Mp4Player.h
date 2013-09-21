@@ -15,7 +15,7 @@ public:
 	/** CRtpPlayer */
 	bool Setup(const string&);
 	bool GetTrackID(vector<size_t>&);
-	bool GetSdp(size_t, string&);
+	string GetSdp();
 	bool SetInterleaved(size_t, size_t);
 	bool Play(int);
 	void Teardown();

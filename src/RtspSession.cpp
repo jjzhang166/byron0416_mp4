@@ -155,15 +155,9 @@ void CRtspSession::ProcessRequest()
 void CRtspSession::OnDescribe()
 {
 	vector<size_t> ids;
-	string sdp;
 
 	m_Mp4.Setup(m_Request.GetFile());
-	m_Mp4.GetTrackID(ids);
-	for(size_t i=0; i<ids.size(); i++)
-	{
-		m_Mp4.GetSdp(ids[i], sdp);
-		m_Body += sdp;
-	}
+	m_Body = m_Mp4.GetSdp();
 }
 
 bool CRtspSession::OnSetup()
