@@ -40,6 +40,14 @@ bool CChannelTrack::Stop()
 	return true;
 }
 
+void CChannelTrack::SetLog(CLog *log)
+{
+	m_Log = log;
+
+	m_Server.SetLog(m_Log);
+	m_Client.SetLog(m_Log);
+}
+
 void CChannelTrack::OnRead()
 {
 	const size_t LEN = 1500;
@@ -62,6 +70,15 @@ void CChannelTrack::OnRead()
 
 
 /** CLiveChannel */
+
+CLiveChannel::CLiveChannel()
+{
+}
+
+CLiveChannel::~CLiveChannel()
+{
+	Stop();
+}
 
 bool CLiveChannel::Run(const string &path)
 {
@@ -143,6 +160,15 @@ void CLiveChannel::Stop()
 	m_Tracks.clear();
 
 	m_Engin.Uninitialize();
+}
+
+void CLiveChannel::SetLog(CLog *log)
+{
+	m_Log = log;
+
+	m_Engin.SetLog(m_Log);
+	for(size_t i=0; i<m_Tracks.size(); i++)
+		m_Tracks[i]->SetLog(m_Log);
 }
 
 bool CLiveChannel::Parse(const string &file)
@@ -281,6 +307,14 @@ void CLiveChannels::Uninitialize()
 		delete iter->second;
 	}
 	m_Channels.clear();
+}
+
+void CLiveChannels::SetLog(CLog*)
+{
+	map<string, CLiveChannel*>::iterator iter;
+
+	for(iter=m_Channels.begin(); iter!=m_Channels.end(); iter++)
+		iter->second->SetLog(m_Log);
 }
 
 CLiveChannels::CLiveChannels()

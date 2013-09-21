@@ -17,6 +17,8 @@ public:
 	CChannelTrack(CEventEngin*);
 	bool Run(size_t);
 	bool Stop();
+	//CLogger
+	void SetLog(CLog*);
 private:
 	int GetFd() {return m_Server.GetFd();}
 	void OnRead();
@@ -25,9 +27,11 @@ private:
 	CUdpClient m_Client;
 };
 
-class CLiveChannel
+class CLiveChannel: public CLogger
 {
 public:
+	CLiveChannel();
+	virtual ~CLiveChannel();
 	/**
 	 * @note Without / at the end.
 	 */
@@ -36,6 +40,8 @@ public:
 	bool GetTrackID(vector<size_t>&);
 	size_t GetPort(size_t);
 	void Stop();
+	//CLogger
+	void SetLog(CLog*);
 private:
 	bool Parse(const string&);
 private:
@@ -57,6 +63,8 @@ public:
 	bool GetTrackID(const string&, vector<size_t>&);
 	size_t GetPort(const string&, size_t);
 	void Uninitialize();
+	//CLogger
+	void SetLog(CLog*);
 private:
 	CLiveChannels();
 	~CLiveChannels();

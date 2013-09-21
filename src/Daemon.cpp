@@ -83,6 +83,7 @@ pid_t CDaemon::ForkWorker(const string &log, bool isDaemon)
 
 		m_Log = &fileLog;
 
+		CLiveChannels::GetInstance()->SetLog(&fileLog);
 		CLiveChannels::GetInstance()->Initialize();
 
 		server.SetLog(&fileLog);
