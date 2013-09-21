@@ -200,6 +200,9 @@ bool CLiveChannel::Parse(const string &file)
 
 /** CLiveChannels */
 
+string CLiveChannels::m_Path;
+string CLiveChannels::m_IP;
+
 CLiveChannels* CLiveChannels::GetInstance()
 {
 	static CLiveChannels s_Channels;
@@ -207,11 +210,11 @@ CLiveChannels* CLiveChannels::GetInstance()
 	return &s_Channels;
 }
 
-bool CLiveChannels::Initialize(const string &path)
+bool CLiveChannels::Initialize()
 {
 	dirent *ent;
 
-	DIR *dir = opendir(path.c_str());
+	DIR *dir = opendir(m_Path.c_str());
 	if(dir != NULL)
 	{
 		while(NULL != (ent = readdir(dir)))
@@ -219,7 +222,7 @@ bool CLiveChannels::Initialize(const string &path)
 			if(DT_DIR == ent->d_type)
 			{
 				CLiveChannel *channel = new CLiveChannel();
-				string name = path + ent->d_name;
+				string name = m_Path + ent->d_name;
 				if(channel->Run(name) == true)
 				{
 					m_Channels.insert(pair<string, CLiveChannel*>(string(ent->d_name)+".sdp", channel));

@@ -48,8 +48,10 @@ private:
 class CLiveChannels: public CLogger
 {
 public:
+	static void SetPath(const string &path) {m_Path = path;}
+	static void SetIP(const string &ip) {m_IP = ip;}
 	static CLiveChannels* GetInstance();
-	bool Initialize(const string&);
+	bool Initialize();
 	string GetSdp(const string&);
 	bool GetTrackID(const string&, vector<size_t>&);
 	size_t GetPort(const string&, size_t);
@@ -58,6 +60,8 @@ private:
 	CLiveChannels();
 	~CLiveChannels();
 private:
+	static string m_Path; // Sdp file saved.
+	static string m_IP; // Local IP to receive rtp data.
 	map<string, CLiveChannel*> m_Channels;
 };
 
