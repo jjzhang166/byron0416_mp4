@@ -2,6 +2,7 @@
 #include <sstream>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <errno.h>
 #include "LiveServer.h"
 
 
@@ -19,7 +20,7 @@ bool CChannelTrack::Run(size_t port)
 	if(false == m_Client.Connect("239.9.9.9", port))
 		return false;
 
-	if(true == m_Server.Bind(port))
+	if(true == m_Server.Bind(port, "192.168.0.100"))
 	{
 		if(true == RegisterRD())
 			return true;
@@ -44,8 +45,19 @@ void CChannelTrack::OnRead()
 	const size_t LEN = 1500;
 	char BUF[LEN] = {0};
 
-	size_t len = m_Server.Recv(BUF, LEN);
-	len = m_Client.Send(BUF, len);
+	while(true)
+	{
+		ssize_t len = m_Server.Recv(BUF, LEN);
+		if(len > 0)
+		{
+			//LOG_DEBUG("xxxxxxxxxxxxx" << len);
+			len = m_Client.Send(BUF, len);
+			if(0 > len)
+				LOG_DEBUG("Failed to copy data to multicast " << errno << ".");
+		}
+		else
+			break;
+	}
 }
 
 

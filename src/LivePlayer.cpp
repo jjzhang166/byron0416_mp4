@@ -12,7 +12,7 @@ CLiveTrack::CLiveTrack(CEventEngin *engin):
 
 bool CLiveTrack::Run()
 {
-	if(true == m_Server.Bind(m_Port))
+	if(true == m_Server.Bind(m_Port, "239.9.9.9"))
 		return RegisterRD();
 	else
 		return false;
@@ -21,6 +21,7 @@ bool CLiveTrack::Run()
 void CLiveTrack::Stop()
 {
 	Unregister();
+	m_Rtsp.Detach();
 	m_Server.Close();
 }
 
@@ -29,13 +30,21 @@ void CLiveTrack::OnRead()
 	const size_t LEN = 1500;
 	char BUF[LEN+1];
 
-	ssize_t len = m_Server.Recv(BUF, LEN);
-	//LOG_ERROR("Get a udp packet with bytess " << len << " " << size_t(m_Interleaved));
-	char num[2] = {0x24, m_Interleaved}; //$
-	uint16_t l = htons(len);
-	m_Rtsp.Send(num, 2);
-	m_Rtsp.Send(&l, 2);
-	m_Rtsp.Send(BUF, len);
+	while(true)
+	{
+		ssize_t len = m_Server.Recv(BUF, LEN);
+		if(len > 0)
+		{
+			//LOG_DEBUG("Get a udp packet with bytess " << len << " " << size_t(m_Interleaved));
+			char num[2] = {0x24, m_Interleaved}; //$
+			uint16_t l = htons(len);
+			m_Rtsp.Send(num, 2);
+			m_Rtsp.Send(&l, 2);
+			m_Rtsp.Send(BUF, len);
+		}
+		else
+			break;
+	}
 }
 
 
