@@ -24,7 +24,7 @@ struct CPacketEntry
 /** CTrack */
 
 CTrack::CTrack():
-	m_ID(0), m_Type(0), m_Timescale(0), m_Refer(0), m_SSRC(rand()), m_SampleReaded(0)
+	m_ID(0), m_Type(0), m_Timescale(0), m_Key(false), m_Refer(0), m_SSRC(rand()), m_SampleReaded(0)
 {
 }
 
@@ -845,8 +845,14 @@ bool CMp4Demuxer::ParseStss(Atom atom, CTrack *track)
 
 		if(false == Read32BE(num))
 			return false;
-		//LOG_TRACE("\tSTSS: There is a I Frame with sample number " << num << ".");
+		else
+		{
+			track->m_Keys.push_back(num);
+			//LOG_TRACE("\tSTSS: There is a I Frame with sample number " << num << ".");
+		}
 	}
+
+	track->m_Key = true;
 
 	return true;
 }

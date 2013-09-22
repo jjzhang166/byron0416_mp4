@@ -39,6 +39,7 @@ public:
 	UInt32 m_ID;
 	UInt32 m_Type;
 	UInt32 m_Timescale;
+	bool m_Key;
 	UInt32 m_Refer; //For hint.
 	UInt32 m_SSRC; //For hint.
 	string m_Sdp; //For hint.
@@ -46,6 +47,7 @@ public:
 	vector<size_t> m_SampleSize; //temp
 	vector<size_t> m_ChunkCapacity; //temp
 	vector<size_t> m_ChunkOffset; //temp
+	vector<size_t> m_Keys;
 	vector<CSample> m_Samples;
 	size_t m_SampleReaded;
 };
