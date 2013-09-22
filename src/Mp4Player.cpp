@@ -161,6 +161,5 @@ void CMp4Player::OnTimer()
 	if(m_Samples.empty()) // Play to the end.
 	{
 		Teardown();
-		return ReturnEvent(E_OK);
 	}
 }
