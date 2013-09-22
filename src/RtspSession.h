@@ -26,6 +26,7 @@ private:
 	ErrorCode OnDescribe();
 	ErrorCode OnSetup();
 	ErrorCode OnPlay();
+	ErrorCode OnPause();
 	void SendError(ErrorCode);
 	void Close();
 	/** CEventImplement */
@@ -41,6 +42,7 @@ private:
 	CMp4Player m_Mp4;
 	CLivePlayer m_Live;
 	CRtpPlayer *m_Player;
+	bool m_Pause;
 	size_t m_Type; //RTSP=1 or RTCP=2
 	size_t m_HeaderSended;
 	string m_Body;

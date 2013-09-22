@@ -124,6 +124,16 @@ bool CLivePlayer::Play(int fd)
 	return true;
 }
 
+bool CLivePlayer::Pause()
+{
+	return false;
+}
+
+bool CLivePlayer::Resume()
+{
+	return false;
+}
+
 void CLivePlayer::Teardown()
 {
 	for(size_t i=0; i<m_Tracks.size(); i++)

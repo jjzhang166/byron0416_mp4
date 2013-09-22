@@ -58,6 +58,7 @@ public:
 	bool Parse(const string&);
 	void Close();
 	/** CRtpSource */
+	size_t GetDuration();
 	size_t GetTrackID(vector<size_t>&);
 	string GetSdp(size_t);
 	bool GetRtpSample(size_t, CRtpSample&);
@@ -67,6 +68,7 @@ private:
 	bool ParseDefault(Atom, CTrack*);
 	bool ParseAtom(Atom, CTrack*);
 	bool ParseFtyp(Atom, CTrack*);
+	bool ParseMvhd(Atom, CTrack*);
 	bool ParseTrak(Atom, CTrack*);
 	bool ParseTkhd(Atom, CTrack*);
 	bool ParseMdhd(Atom, CTrack*);
@@ -80,6 +82,7 @@ private:
 	bool ParseSdp (Atom, CTrack*);
 private:
 	int m_Fd;
+	size_t m_Duration;
 	map<size_t, CTrack> m_Tracks;
 };
 

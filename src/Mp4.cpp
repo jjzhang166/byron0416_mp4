@@ -74,6 +74,11 @@ void CMp4Demuxer::Close()
 	m_Tracks.clear();
 }
 
+size_t CMp4Demuxer::GetDuration()
+{
+	return m_Duration;
+}
+
 size_t CMp4Demuxer::GetTrackID(vector<size_t> &ids)
 {
 	map<size_t, CTrack>::iterator iter;
@@ -328,7 +333,7 @@ bool CMp4Demuxer::ParseAtom(Atom atom, CTrack *track)
 			}
 		case MKTYPE('m', 'v', 'h', 'd'):
 			{
-				ret = true;
+				ret = ParseMvhd(atom, track);
 				break;
 			}
 		case MKTYPE('t', 'r', 'a', 'k'):
@@ -503,6 +508,54 @@ bool CMp4Demuxer::ParseFtyp(Atom atom, CTrack *track)
 	}
 	else
 		return false;
+}
+
+bool CMp4Demuxer::ParseMvhd(Atom atom, CTrack *track)
+{
+	UInt32 version;
+
+	if(true == Read32BE(version))
+		version = version >> 24;
+	else
+		return false;
+
+	if(version == 1)
+	{
+		/*
+		UInt64 create;
+		UInt64 modify;
+		UInt32 timescale;
+		UInt64 duration;
+
+		if(sizeof(create) != read(fd, &create, sizeof(create))
+			return false;
+		if(sizeof(modify) != read(fd, &modify, sizeof(modify))
+			return false;
+		*/
+
+		assert(false);
+		return false;
+	}
+	else if(version == 0)
+	{
+		UInt32 create;
+		UInt32 modify;
+		UInt32 timescale;
+		UInt32 duration;
+
+		if(false == Read32BE(create))
+			return false;
+		if(false == Read32BE(modify))
+			return false;
+		if(false == Read32BE(timescale))
+			return false;
+		if(false == Read32BE(duration))
+			return false;
+
+		m_Duration = duration * 1000 / timescale;
+	}
+
+	return true;
 }
 
 bool CMp4Demuxer::ParseTrak(Atom atom, CTrack *track)

@@ -18,6 +18,8 @@ public:
 	string GetSdp();
 	bool SetInterleaved(size_t, size_t);
 	bool Play(int);
+	bool Pause();
+	bool Resume();
 	void Teardown();
 	//CLogger
 	void SetLog(CLog*);

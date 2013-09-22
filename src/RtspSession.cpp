@@ -13,7 +13,7 @@ size_t CRtspSession::m_Session = 0x1111111111111110;
 CMutex CRtspSession::m_Mutex;
 
 CRtspSession::CRtspSession(CEventEngin *engin, CEvent *pre):
-	CEventImplement(engin, pre), m_Mp4(engin, this), m_Live(engin, this), m_Type(0)
+	CEventImplement(engin, pre), m_Mp4(engin, this), m_Live(engin, this), m_Pause(false), m_Type(0)
 {
 }
 
@@ -154,7 +154,12 @@ void CRtspSession::ProcessRequest()
 	}
 	else if(m_Request.GetMethod() == "PAUSE")
 	{
-		//assert(false);
+		OnPause();
+
+		//Session
+		name = "Session";
+		m_Request.GetField(name, value);
+		m_Response.AddField(name, value);
 	}
 	else if(m_Request.GetMethod() == "TEARDOWN")
 	{
@@ -230,10 +235,27 @@ ErrorCode CRtspSession::OnSetup()
 
 ErrorCode CRtspSession::OnPlay()
 {
-	if(true == m_Player->Play(GetFd()))
+	if(m_Pause)
+	{
+		m_Player->Resume();
+
 		return E_OK;
+	}
 	else
-		return E_ERROR;
+	{
+		if(true == m_Player->Play(GetFd()))
+			return E_OK;
+		else
+			return E_ERROR;
+	}
+}
+
+ErrorCode CRtspSession::OnPause()
+{
+	m_Player->Pause();
+	m_Pause = true;
+
+	return E_OK;
 }
 
 void CRtspSession::SendError(ErrorCode)

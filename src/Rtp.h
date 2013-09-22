@@ -29,6 +29,10 @@ class CRtpSource
 {
 public:
 	virtual ~CRtpSource() = 0;
+	/**
+	 * @return ms.
+	 */
+	virtual size_t GetDuration() = 0;
 	virtual size_t GetTrackID(vector<size_t>&) = 0;
 	virtual string GetSdp(size_t) = 0;
 	virtual bool GetRtpSample(size_t, CRtpSample&) = 0;
@@ -43,6 +47,8 @@ public:
 	virtual string GetSdp() = 0;
 	virtual bool SetInterleaved(size_t, size_t) = 0;
 	virtual bool Play(int) = 0;
+	virtual bool Pause() = 0;
+	virtual bool Resume() = 0;
 	virtual void Teardown() = 0;
 };
 

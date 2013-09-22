@@ -1,7 +1,10 @@
+#include <sstream>
 #include <arpa/inet.h> // htons
 #include "Common.h" // GetCurrent()
 #include "Mp4Player.h"
 
+
+using std::ostringstream;
 
 /** CMp4Player */
 
@@ -27,12 +30,19 @@ bool CMp4Player::GetTrackID(vector<size_t> &ids)
 
 string CMp4Player::GetSdp()
 {
-	string sdp;
+	ostringstream range;
+	float dur = (float)(m_Mp4.GetDuration()) / 1000;
+	range << "a=range:npt=0-" << dur << "\r\n";
+
+	string sdp = range.str();
 	vector<size_t> ids;
 
 	m_Mp4.GetTrackID(ids);
 	for(size_t i=0; i<ids.size(); i++)
+	{
 		sdp += m_Mp4.GetSdp(ids[i]);
+		sdp += range.str();
+	}
 
 	return sdp;
 }
@@ -67,6 +77,28 @@ bool CMp4Player::Play(int fd)
 
 		return true;
 	}
+}
+
+bool CMp4Player::Pause()
+{
+	SetTimer(0, 0);
+
+	return true;
+}
+
+bool CMp4Player::Resume()
+{
+	if(!m_Samples.empty())
+	{
+		size_t now = GetCurrent();
+		map<size_t, CRtpSample>::iterator iter = m_Samples.begin();
+		m_StartTime = now - iter->second.m_Timestamp;
+		SetTimer(1, 0);
+
+		return true;
+	}
+	else
+		return false;
 }
 
 void CMp4Player::Teardown()
