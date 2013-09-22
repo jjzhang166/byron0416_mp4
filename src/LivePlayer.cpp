@@ -131,3 +131,19 @@ void CLivePlayer::Teardown()
 		m_Tracks[i].Stop();
 	}
 }
+
+void CLivePlayer::SetLog(CLog *log)
+{
+	m_Log = log;
+
+	for(size_t i=0; i<m_Tracks.size(); i++)
+		m_Tracks[i].SetLog(m_Log);
+}
+
+void CLivePlayer::SetTitle(const string &title)
+{
+	m_Title = title;
+
+	for(size_t i=0; i<m_Tracks.size(); i++)
+		m_Tracks[i].SetTitle(m_Title);
+}

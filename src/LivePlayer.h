@@ -43,6 +43,9 @@ public:
 	bool SetInterleaved(size_t, size_t);
 	bool Play(int);
 	void Teardown();
+	//CLogger
+	void SetLog(CLog*);
+	void SetTitle(const string&);
 private:
 	/** CEventExImplement */
 	int GetFd() {return -1;}

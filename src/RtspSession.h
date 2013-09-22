@@ -17,6 +17,9 @@ public:
 	virtual ~CRtspSession();
 	bool Initialize();
 	bool Handle(int fd);
+	//CLogger
+	void SetLog(CLog*);
+	void SetTitle(const string&);
 private:
 	string GetSessionID();
 	void ProcessRequest();

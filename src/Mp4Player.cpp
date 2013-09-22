@@ -78,6 +78,20 @@ void CMp4Player::Teardown()
 	m_Samples.clear();
 }
 
+void CMp4Player::SetLog(CLog *log)
+{
+	m_Log = log;
+
+	m_Mp4.SetLog(log);
+}
+
+void CMp4Player::SetTitle(const string &title)
+{
+	m_Title = title;
+
+	m_Mp4.SetTitle(m_Title);
+}
+
 void CMp4Player::OnTimer()
 {
 	size_t now = GetCurrent();

@@ -534,7 +534,8 @@ bool CMp4Demuxer::ParseTrak(Atom atom, CTrack *track)
 		if(ccapacity == 0)
 		{
 			cidx++;
-			coffset = trk.m_ChunkOffset[cidx];
+			if(cidx < trk.m_ChunkOffset.size()) //cidx will be overflow when push back the latest sample.
+				coffset = trk.m_ChunkOffset[cidx];
 			if(cidx < trk.m_ChunkCapacity.size())
 				ccapacity = trk.m_ChunkCapacity[cidx];
 			else

@@ -19,7 +19,6 @@ CRtspSession::CRtspSession(CEventEngin *engin, CEvent *pre):
 
 CRtspSession::~CRtspSession()
 {
-	Close();
 }
 
 bool CRtspSession::Initialize()
@@ -33,6 +32,26 @@ bool CRtspSession::Handle(int fd)
 	RegisterRD();
 
 	return true;
+}
+
+void CRtspSession::SetLog(CLog *log)
+{
+	m_Log = log;
+
+	m_Request.SetLog(m_Log);
+	m_Response.SetLog(m_Log);
+	m_Mp4.SetLog(m_Log);
+	m_Live.SetLog(m_Log);
+}
+
+void CRtspSession::SetTitle(const string &title)
+{
+	m_Title = title;
+
+	m_Request.SetTitle(m_Title);
+	m_Response.SetTitle(m_Title);
+	m_Mp4.SetTitle(m_Title);
+	m_Live.SetTitle(m_Title);
 }
 
 string CRtspSession::GetSessionID()
@@ -51,7 +70,7 @@ string CRtspSession::GetSessionID()
 void CRtspSession::ProcessRequest()
 {
 	string name, value;
-	ErrorCode ret;
+	ErrorCode ret = E_OK;
 
 	m_Response.Initialize();
 	m_HeaderSended = 0;
