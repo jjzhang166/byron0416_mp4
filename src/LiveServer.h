@@ -51,7 +51,7 @@ private:
 	vector<CChannelTrack*> m_Tracks;
 };
 
-class CLiveChannels: public CLogger
+class CLiveChannels: public CEventExImplement 
 {
 public:
 	static void SetPath(const string &path) {m_Path = path;}
@@ -68,9 +68,13 @@ public:
 private:
 	CLiveChannels();
 	~CLiveChannels();
+	//CEventEx
+	int GetFd() {return 0;}
+	void OnTimer();
 private:
 	static string m_Path; // Sdp file saved.
 	static string m_IP; // Local IP to receive rtp data.
+	CEventEngin m_Engin;
 	map<string, CLiveChannel*> m_Channels;
 };
 

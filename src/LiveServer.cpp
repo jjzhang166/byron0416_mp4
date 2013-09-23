@@ -238,32 +238,18 @@ CLiveChannels* CLiveChannels::GetInstance()
 
 bool CLiveChannels::Initialize()
 {
-	dirent *ent;
+	struct stat st;
 
-	DIR *dir = opendir(m_Path.c_str());
-	if(dir != NULL)
+	if(0 == stat(m_Path.c_str(), &st))
 	{
-		while(NULL != (ent = readdir(dir)))
+		if(true == m_Engin.Initialize())
 		{
-			if(DT_DIR == ent->d_type)
-			{
-				CLiveChannel *channel = new CLiveChannel();
-				channel->SetLog(m_Log);
-				string name = m_Path + ent->d_name;
-				if(channel->Run(name) == true)
-				{
-					m_Channels.insert(pair<string, CLiveChannel*>(string(ent->d_name)+".sdp", channel));
-				}
-				else
-				{
-					channel->Stop();
-					delete channel;
-				}
-			}
-		}
-		closedir(dir);
+			SetTimer(100, 5000);
 
-		return true;
+			return true;
+		}
+		else
+			return false;
 	}
 	else
 		return false;
@@ -301,6 +287,9 @@ size_t CLiveChannels::GetPort(const string &name, size_t id)
 
 void CLiveChannels::Uninitialize()
 {
+	m_Engin.Stop();
+	SetTimer(0, 0);
+
 	map<string, CLiveChannel*>::iterator iter;
 	for(iter=m_Channels.begin(); iter!=m_Channels.end(); iter++)
 	{
@@ -308,6 +297,8 @@ void CLiveChannels::Uninitialize()
 		delete iter->second;
 	}
 	m_Channels.clear();
+
+	m_Engin.Uninitialize();
 }
 
 void CLiveChannels::SetLog(CLog*)
@@ -318,10 +309,62 @@ void CLiveChannels::SetLog(CLog*)
 		iter->second->SetLog(m_Log);
 }
 
-CLiveChannels::CLiveChannels()
+CLiveChannels::CLiveChannels():
+	CEventExImplement(&m_Engin, NULL)
 {
 }
 
 CLiveChannels::~CLiveChannels()
 {
+}
+
+void CLiveChannels::OnTimer()
+{
+	dirent *ent;
+
+	DIR *dir = opendir(m_Path.c_str());
+	if(dir != NULL)
+	{
+		while(NULL != (ent = readdir(dir)))
+		{
+			if(DT_DIR == ent->d_type)
+			{
+				string name = string(ent->d_name) + ".sdp";
+				if((name=="..sdp") || (name=="...sdp"))
+					continue;
+				if(m_Channels.find(name) == m_Channels.end())
+				{
+					CLiveChannel *channel = new CLiveChannel();
+					channel->SetLog(m_Log);
+					if(channel->Run(m_Path+ent->d_name) == true)
+					{
+						m_Channels.insert(pair<string, CLiveChannel*>(name, channel));
+					}
+					else
+					{
+						channel->Stop();
+						delete channel;
+					}
+				}
+			}
+		}
+		closedir(dir);
+	}
+
+	map<string, CLiveChannel*>::iterator iter;
+	for(iter=m_Channels.begin(); iter!=m_Channels.end(); iter++)
+	{
+		struct stat st;
+		string name = iter->first;
+
+		name = name.substr(0, name.find(".sdp"));
+		if(0 != stat((m_Path+name).c_str(), &st))
+		{
+			iter->second->Stop();
+			delete iter->second;
+			m_Channels.erase(iter);
+
+			break;
+		}
+	}
 }
