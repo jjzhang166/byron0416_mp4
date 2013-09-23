@@ -17,7 +17,9 @@ public:
 	bool GetTrackID(vector<size_t>&);
 	string GetSdp();
 	bool SetInterleaved(size_t, size_t);
+	bool Seek(size_t);
 	bool Play(int);
+	size_t GetCurrentPos();
 	bool Pause();
 	bool Resume();
 	void Teardown();

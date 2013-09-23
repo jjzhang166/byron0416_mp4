@@ -34,6 +34,7 @@ class CTcp: public CSocket
 public:
 	int Attach(int fd = -1);
 	bool SetLinger(int);
+	bool SetNoDelay();
 };
 
 class CTcpServer: public CTcp

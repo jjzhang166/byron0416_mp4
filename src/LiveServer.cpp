@@ -248,6 +248,7 @@ bool CLiveChannels::Initialize()
 			if(DT_DIR == ent->d_type)
 			{
 				CLiveChannel *channel = new CLiveChannel();
+				channel->SetLog(m_Log);
 				string name = m_Path + ent->d_name;
 				if(channel->Run(name) == true)
 				{

@@ -31,10 +31,14 @@ public:
 	size_t m_Len;
 };
 
-class CTrack
+class CTrack: public CLogger
 {
 public:
 	CTrack();
+	/**
+	 * @param pos Millisecond.
+	 */
+	bool Seek(size_t pos);
 public:
 	UInt32 m_ID;
 	UInt32 m_Type;
@@ -63,6 +67,7 @@ public:
 	size_t GetDuration();
 	size_t GetTrackID(vector<size_t>&);
 	string GetSdp(size_t);
+	bool Seek(size_t);
 	bool GetRtpSample(size_t, CRtpSample&);
 private:
 	bool Read16BE(UInt16&);

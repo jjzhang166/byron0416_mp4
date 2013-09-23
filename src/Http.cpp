@@ -248,6 +248,9 @@ void CHttpResponse::Response(const string &version, ErrorCode err)
 	case E_ENTITYTOOLARGE:
 		out << "Request Entity Too Large";
 		break;
+	case E_UNSUPPORTEDTRANSPORT:
+		out << "Unsupported Transport";
+		break;
 	case E_ERROR:
 		out << "Internal Server Error";
 		break;

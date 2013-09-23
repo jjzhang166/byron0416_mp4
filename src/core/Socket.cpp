@@ -1,5 +1,6 @@
 #include <fcntl.h>
 #include <arpa/inet.h>
+#include <linux/tcp.h>
 #include <errno.h>
 #include <string.h>
 #include "Socket.h"
@@ -84,6 +85,21 @@ bool CTcp::SetLinger(int time)
 	else
 	{
 		LOG_ERROR("Set LINGER for socket " << m_Fd << " failed(" << strerror(errno) << ").");
+
+		return false;
+	}
+}
+
+bool CTcp::SetNoDelay()
+{
+	int nodelay = 1;   
+
+	//if(0 == setsockopt(m_Fd, IPPROTO_TCP, TCP_NODELAY, (char*)&nodelay, sizeof(char)))   
+	if(0 == setsockopt(m_Fd, IPPROTO_IP, TCP_NODELAY, (char*)&nodelay, sizeof(char)))   
+		return true;
+	else
+	{
+		LOG_ERROR("Set NODELAY for socket " << m_Fd << " failed(" << strerror(errno) << ").");
 
 		return false;
 	}

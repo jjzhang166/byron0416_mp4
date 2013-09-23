@@ -28,6 +28,40 @@ CTrack::CTrack():
 {
 }
 
+bool CTrack::Seek(size_t pos)
+{
+	size_t i;
+
+	if(m_Key == true)
+	{
+		for(i=m_Keys.size()-1; i>=0; i--)
+		{
+			if(m_Samples[m_Keys[i]].m_Timestamp*1000/m_Timescale <= pos)
+			{
+				m_SampleReaded = m_Keys[i];
+				//LOG_TRACE("Readed with key at " << m_SampleReaded << " " << m_Samples[m_Keys[i]].m_Timestamp*1000/m_Timescale << " with pso " << pos);
+
+				return true;
+			}
+		}
+	}
+	else
+	{
+		for(i=m_Samples.size()-1; i>=0; i--)
+		{
+			if(m_Samples[i].m_Timestamp*1000/m_Timescale <= pos)
+			{
+				m_SampleReaded = i;
+				//LOG_TRACE("Readed at " << m_SampleReaded <<  " " << m_Samples[i].m_Timestamp*1000/m_Timescale << " with pso " << pos);
+
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 
 /** CMp4Demuxer */
 
@@ -102,6 +136,24 @@ string CMp4Demuxer::GetSdp(size_t id)
 		return iter->second.m_Sdp;
 	else
 		return "";
+}
+
+bool CMp4Demuxer::Seek(size_t pos)
+{
+	map<size_t, CTrack>::iterator iter;
+
+	for(iter=m_Tracks.begin(); iter!=m_Tracks.end(); iter++)
+	{
+		CTrack &track = iter->second;
+
+		if(track.m_Type == MKTYPE('h', 'i', 'n', 't'))
+		{
+			if(false == track.Seek(pos))
+				return false;
+		}
+	}
+
+	return true;
 }
 
 bool CMp4Demuxer::GetRtpSample(size_t id, CRtpSample &rtp)
@@ -847,7 +899,7 @@ bool CMp4Demuxer::ParseStss(Atom atom, CTrack *track)
 			return false;
 		else
 		{
-			track->m_Keys.push_back(num);
+			track->m_Keys.push_back(num-1);
 			//LOG_TRACE("\tSTSS: There is a I Frame with sample number " << num << ".");
 		}
 	}

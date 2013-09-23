@@ -29,6 +29,7 @@ bool CRtspSession::Initialize()
 bool CRtspSession::Handle(int fd)
 {
 	m_Connect.Attach(fd);
+	m_Connect.SetNoDelay();
 	RegisterRD();
 
 	return true;
@@ -132,9 +133,12 @@ void CRtspSession::ProcessRequest()
 		m_Response.AddField(name, value);
 
 		//Transport
-		name = "Transport";
-		m_Request.GetField(name, value);
-		m_Response.AddField(name, value);
+		if(ret == E_OK)
+		{
+			name = "Transport";
+			m_Request.GetField(name, value);
+			m_Response.AddField(name, value);
+		}
 	}
 	else if(m_Request.GetMethod() == "PLAY")
 	{
@@ -144,6 +148,12 @@ void CRtspSession::ProcessRequest()
 		name = "Session";
 		m_Request.GetField(name, value);
 		m_Response.AddField(name, value);
+
+		//Range
+		name = "Range";
+		m_Request.GetField(name, value);
+		if(!value.empty())
+			m_Response.AddField(name, value);
 	}
 	else if(m_Request.GetMethod() == "GET_PARAMETER")
 	{
@@ -235,6 +245,32 @@ ErrorCode CRtspSession::OnSetup()
 
 ErrorCode CRtspSession::OnPlay()
 {
+	string name, value;
+
+	name = "Range";
+	m_Request.GetField(name, value);
+	if(value.empty())
+	{
+		size_t pos = m_Player->GetCurrentPos();
+		m_Player->Seek(pos);
+	}
+	else
+	{
+		value = value.substr(value.find("npt=")+4, string::npos);
+		float pos;
+		istringstream in(value);
+
+		in >> pos;
+		LOG_ERROR("xxxxxxxxxxxxxxxxxxxx " << pos);
+		m_Player->Seek((size_t)(pos*1000));
+	}
+
+	if(true == m_Player->Play(GetFd()))
+		return E_OK;
+	else
+		return E_ERROR;
+
+	/*
 	if(m_Pause)
 	{
 		m_Player->Resume();
@@ -248,6 +284,7 @@ ErrorCode CRtspSession::OnPlay()
 		else
 			return E_ERROR;
 	}
+	*/
 }
 
 ErrorCode CRtspSession::OnPause()

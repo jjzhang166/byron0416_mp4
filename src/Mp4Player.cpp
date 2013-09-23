@@ -54,12 +54,21 @@ bool CMp4Player::SetInterleaved(size_t id, size_t interleaved)
 	return true;
 }
 
+bool CMp4Player::Seek(size_t pos)
+{
+	m_Samples.clear();
+	LOG_TRACE("Seek position " << pos << ".");
+
+	return m_Mp4.Seek(pos);
+}
+
 bool CMp4Player::Play(int fd)
 {
 	vector<size_t> ids;
+	size_t seekPos = 0;
 
-	m_StartTime = GetCurrent();
-	m_Rtsp.Attach(fd);
+	if(m_Rtsp.GetFd() <= 0)
+		m_Rtsp.Attach(fd);
 
 	if(0 == m_Mp4.GetTrackID(ids))
 		return false;
@@ -70,13 +79,30 @@ bool CMp4Player::Play(int fd)
 			CRtpSample sample;
 
 			if(true == m_Mp4.GetRtpSample(ids[i], sample))
+			{
 				m_Samples.insert(std::pair<size_t, CRtpSample>(ids[i], sample));
+				seekPos = sample.m_Timestamp;
+			}
 		}
 
-		SetTimer(1, 0);
+		m_StartTime = GetCurrent() - seekPos;
+		SetTimer(1000, 0);
 
 		return true;
 	}
+}
+
+size_t CMp4Player::GetCurrentPos()
+{
+	if(!m_Samples.empty())
+	{
+		map<size_t, CRtpSample>::iterator iter = m_Samples.begin();
+		CRtpSample &sample = iter->second;
+
+		return sample.m_Timestamp;
+	}
+	else
+		return 0;
 }
 
 bool CMp4Player::Pause()
@@ -147,6 +173,7 @@ void CMp4Player::OnTimer()
 			size_t ts = sample.m_Timestamp;
 			if(ts < now-m_StartTime)
 			{
+				//LOG_TRACE("xxxxxxxxxxxxxxxx " << iter->first << " " << ts);
 				vector<CRtpPacket> &packets = sample.m_Packets;
 
 				for(size_t i=0; i<packets.size(); i++)
@@ -185,6 +212,7 @@ void CMp4Player::OnTimer()
 				else
 					ts = 1;
 				SetTimer(ts, 0);
+				//LOG_TRACE("xxxxxxxxxxxx " << ts);
 				break;
 			}
 		}
